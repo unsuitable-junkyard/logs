@@ -1,0 +1,205 @@
+**Vulnerability
+Details:**
+
+During a
+previous report (May 29), I submitted a bug where ChatGPT
+hallucinated a recommendation for a local supermarket in my actual
+region — a place I never mentioned in the conversation history.
+This was submitted directly to OpenAI via internal contact, not
+through Bugcrowd.
+
+At the
+time, I reported it as occurring on Microsoft Edge, but omitted a key
+environmental detail: I was using Edge in **App Mode**, not standard
+browser mode. I had mistakenly assumed "app window" just
+meant a detached tab.
+
+Recently,
+I encountered very similar hallucination behavior again, during
+long-form text analysis (approx. 15,000 characters), performed 3–4
+times in a row — and again, this occurred under Edge App Mode.
+
+These
+newer instances show:
+
+-
+Hallucinated dialogue history
+
+-
+Fabricated user locations or content attributions
+
+-
+Triggered only in App Mode, not standard browser sessions (tentative)
+
+💡 I
+now believe that the prior May 29 bug and the current ones share the
+same App Mode context, and that this environmental factor may play a
+role in memory misrouting, session desync, or cache handling.
+
+---
+
+**Steps
+to Reproduce:**
+
+1.
+Launch ChatGPT (GPT-4o) in Microsoft Edge – App Mode.
+
+2. Start
+a fresh conversation.
+
+3. Input
+a long text (approx. 12,000–15,000 characters) and request "your
+impressions or analysis."
+
+4.
+Repeat the process 3–4 times **within the same App Mode session,
+without refreshing or closing the window.**
+
+5.
+Observe: hallucinations begin (e.g., referring to non-existent past
+dialogue, or misattributing user input).
+
+💡 *Note:
+This has not occurred so far in standard browser sessions (non-App
+Mode).*
+
+---
+
+**Impact:**
+
+- May
+cause false attribution or data contamination during creative or
+analytical tasks
+
+-
+Undermines model reliability in long-session use cases
+
+- Prior
+similar bug likely had the same root cause but was misattributed to
+browser alone
+
+---
+
+**References
+& Evidence:**
+
+1. 🔗
+Original May 29 chat log with hallucinated local supermarket
+recommendation
+
+ https://chatgpt.com/share/683803a4-ae30-800a-9c2b-4367d5b5af9c
+
+
+ https://chatgpt.com/share/683816e8-a1a4-800a-96f0-dcded91dc12f
+
+
+ https://chatgpt.com/share/68381a48-3164-800a-b161-ab4a5a64f46f
+
+
+2. 🆕
+Recent July 10 chat exhibiting similar hallucination after repeated
+long-form analysis
+
+ https://chatgpt.com/share/686f86c0-ae1c-800a-a508-59857238ca39
+
+
+ https://chatgpt.com/share/686f8767-e380-800a-9bcc-75fdb4726ca9
+
+
+ https://chatgpt.com/share/686f7eb9-4760-800a-851f-9af03c962d8a
+
+
+3. ✔️
+Environment: Microsoft Edge (version 138.0.3351.77), App Mode enabled
+
+
+4. 🧪
+Observation: No such issue (yet) in Chrome, or in Edge without App
+Mode
+
+ -
+Chrome:
+https://chatgpt.com/share/686fc2e7-8b84-800a-991c-b01360911eba
+
+ -
+Edge: https://chatgpt.com/share/686fc319-13c8-800a-a236-03b8f87f9545
+
+---
+
+**Mitigation
+Suggestion (Optional):**
+
+- Review
+App Mode session handling and memory isolation
+
+-
+Investigate cache/memory leak or session reference bleed after
+repeated long-text processing
+
+-
+Consider implementing App Mode detection telemetry for debugging
+
+---
+
+**Additional
+Observations:**
+
+- I
+tested the same long-text prompts in **normal browser mode** on both
+Chrome and Edge (non-App Mode), and the issue did **not** occur.
+
+- I also
+performed **10+ consecutive long-text analyses** in those modes
+without triggering hallucinations.
+
+ - ✅
+[Link to normal behavior on Chrome]
+
+https://chatgpt.com/share/686fc2e7-8b84-800a-991c-b01360911eba
+
+
+ - ✅
+[Link to normal behavior on Edge (non-App Mode)]
+
+https://chatgpt.com/share/686fc319-13c8-800a-a236-03b8f87f9545
+
+
+---
+
+**Device
+Information:**
+
+- May 29
+hallucination: old Windows 11 laptop, Edge App Mode
+
+- July
+10 hallucinations: new Windows 11 laptop (purchased ~1 week ago),
+also in Edge App Mode
+
+💡 This
+suggests the hallucination behavior is **not device-specific**, but
+instead tied to the use of **App Mode itself** — possibly due to a
+session handling or memory isolation issue inherent to that
+environment.
+
+---
+
+**Session
+Behavior Note:**
+
+The
+hallucination tends to appear after 3–4 long-text sessions.
+
+These
+sessions may occur across multiple chat tabs (e.g., switching between
+main dialogue and a feedback session), and may even span across
+different days.
+
+In some
+cases, I closed and reopened the App Mode window, or put the PC into
+sleep mode — yet the hallucination still occurred after several
+cycles.
+
+This
+suggests that some cached context or memory state may be persisting
+across App Mode launches or system sleeps.
