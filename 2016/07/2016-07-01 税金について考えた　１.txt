@@ -1,0 +1,49 @@
+税金について考えた　１
+2016-07-01
+
+最近GDP
+リンク先：http://d.hatena.ne.jp/keyword/GDPと株価の関係など、大きな金の動きについて考えることが多かった。
+その際に思いついた、税金についての考察を自分用にまとめておく。
+ 
+１．歳入と歳出を見る
+ 
+
+ 
+気づいたこと
+・租税収入が6割、国債
+リンク先：http://d.hatena.ne.jp/keyword/%B9%F1%BA%C4発行が残りと、いわゆる借金体質になっていること
+・酒税、たばこ税が、かつてほどの歳入につながっていないこと
+・所得税
+リンク先：http://d.hatena.ne.jp/keyword/%BD%EA%C6%C0%C0%C7の方が法人税
+リンク先：http://d.hatena.ne.jp/keyword/%CB%A1%BF%CD%C0%C7よりも多い。
+・消費税と所得税
+リンク先：http://d.hatena.ne.jp/keyword/%BD%EA%C6%C0%C0%C7が並んだ。
+ 
+法人税
+リンク先：http://d.hatena.ne.jp/keyword/%CB%A1%BF%CD%C0%C7と所得税
+リンク先：http://d.hatena.ne.jp/keyword/%BD%EA%C6%C0%C0%C7のアンバランスさを検証する。
+ 
+ネットでデータを探してみる。2012年のデータが出そろった。
+ 
+日本企業の売上高、全産業で1302兆円 経済センサス・活動調査 ：日本経済新聞
+リンク先：http://www.nikkei.com/article/DGXNASFS2900I_Z20C13A1EB2000/
+全産業の売上高は1302兆2523億円、粗利益に近い「付加価値額」は242兆6658億円になった。(以上引用)
+ 
+リンク先：http://www.mhlw.go.jp/toukei/saikin/hw/k-tyosa/k-tyosa13/dl/03.pdf
+世帯平均の所得は537.2万円
+リンク先：http://www.mhlw.go.jp/toukei/saikin/hw/k-tyosa/k-tyosa12/dl/02.pdf
+世帯数は4817万世帯
+ 
+整頓するとこうなる。
+　　　　　　　　　売上(兆円)　粗利益(兆円）税金額(兆円)　％(利益：税金)　　
+日本企業全体　　　　1,302　       242                8.8　　　　　3.6％
+国民全体　　　　　　　　　　　 258                13.5　　　　  5.2％
+ 
+奇妙に感じる事。
+租利益に対する法人税
+リンク先：http://d.hatena.ne.jp/keyword/%CB%A1%BF%CD%C0%C7はおよそ３５％。であるのに3.6％しか徴収出来ていない。
+同じく所得税
+リンク先：http://d.hatena.ne.jp/keyword/%BD%EA%C6%C0%C0%C7もそうだ。累進課税
+リンク先：http://d.hatena.ne.jp/keyword/%CE%DF%BF%CA%B2%DD%C0%C7は５％～45％。控除を使ったとしても、5.2％は低すぎる数字に感じる。
+ 
+素敵な節税方法を知っている人が、会社が多いのだろうか。
