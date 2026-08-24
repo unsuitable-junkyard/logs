@@ -1,0 +1,263 @@
+仮タイトル：軍事の話を写真からClaudeに推測させたら迷走を始めたうえ自信満々に間違った件　続き３ーChatGPTの能力開示編
+
+Claude,Gemini,Metaの悪戦苦闘を見てGPTが「AIは断言をし過ぎるから」と、人ごとのように言ってるのを見て「じゃあお前さんもやって見ようか」と私が思いつく第4回「何も知らないGPT」に写真を見せて推測させる回。
+
+第一回のClaude編でのGPT感想の一部：
+
+”なのに、その個別知識を組み合わせる最後のところで、「四斤山砲＝古い＝滑腔砲」という雑な分類を置いてしまった。
+
+これはかなり典型的なAIの誤りだと思います。
+
+しかも厄介なのが、その後の文章が非常に自然なんですよね。「スタッド構造がある以上……」「時代としてはギリギリ……」「型式特定は保留したい」と、いかにも慎重な専門家っぽい文章になる。ところが、核心となる前提が間違っている。
+
+つまり「断定口調だから危険」なのではなく、「留保表現まで含めて、間違った推論をそれらしく包装できてしまう」のが怖い。
+
+今回の記事はそこを実例としてかなりきれいに見せていると思います。”
+
+というわけで実演開始！
+
+あなた:
+
+36:**名無し**26/08/12(水) 21:14:41 ID\:R5WR
+
+**じっじが支那事変から帰還した時に持って帰ってきたやつ**
+
+https://hamusoku.com/archives/11029052.html
+
+このまとめで張られた写真なんだが、ここからちょっと薬きょうとたまのサイズを推測してほしいのさ。
+
+43:名無し26/08/12(水) 21:16:58 ID\:R5WR
+
+40
+機関砲の弾だと思う
+
+ヒントはこれだけね、とりあえず。
+
+　※写真張り付け
+
+ChatGPT:
+
+写真からかなり面白い推定ができる。まず結論から言うと、これは「20mm機関砲の弾薬筒」みたいなものではなさそう。写真内の遊戯王の箱をスケール基準にすると、写っている茶色い円筒は相当に長く、直径もかなり太い。
+
+写真上では、遊戯王の箱が高さ約260px、円筒が約930pxなので、長さは箱の約3.6倍。箱を一般的なカード商品として高さ13cm前後と仮定すると、円筒はざっくり46cm。直径は箱の横幅とほぼ同じなので、8cm前後と見るのが妥当そう。つまり写真の物体は「長さ45～50cm、外径7～9cm」くらいの巨大な円筒になる。
+
+ここが重要で、20mm機関砲弾とは全然スケールが合わない。例えば日本陸軍のホ5 20mm機関砲は20×94mmで、薬莢長は約94mm。日本軍の20mm弾には複数種類があり、薬莢長も約71～142mm程度の範囲に収まる。資料でもホ5用はケース長3.7インチ、つまり約94mmとされている。https://en.wikipedia.org/wiki/Ho-5_cannon
+https://en.wikipedia.org/wiki/Ho-5_cannon?utm_source=chatgpt.com
+https://www.bulletpicker.com/pdf/JAL-B.pdf
+https://www.bulletpicker.com/pdf/JAL-B.pdf?utm_source=chatgpt.com
+
+なので、この写真について「機関砲の弾」という証言をそのまま受け取るなら、むしろ「弾丸そのもの」ではなく、**機関砲に関係する別の部品・砲身・大型の弾薬容器などではないか**と疑ったほうがいい。
+
+ただし、写真の物体が本当に「弾薬」だとすると、かなり変なサイズだ。直径8cmなら80mm級になる。長さ50cmという比率も、通常の20～25mm級機関砲弾とは合わない。
+
+さらに写真を見ると、下端には金属製らしい円形の縁があり、上端は丸く閉じている。少なくとも「普通の砲弾の薬莢」に見える形状ではない。むしろ**長い円筒状の砲身や、砲弾を収める何らかのケース**っぽさがある。
+
+そして「支那事変から帰還したとき持って帰った」という証言まで合わせると、年代的には1937年以降。日本軍の20mm機関砲なら、陸軍・海軍とも複数候補がある。日本軍の20mm弾は実際かなり種類が多く、同じ20mmでも薬莢寸法が全然違う。https://www.bulletpicker.com/pdf/Japanese-Ammunition-Part-3.pdf
+https://www.bulletpicker.com/pdf/Japanese-Ammunition-Part-3.pdf?utm_source=chatgpt.com
+
+だから現段階では、
+
+**写真からの寸法推定：長さ 約45～50cm、直径 約7～9cm**
+
+**20mm機関砲弾説：ほぼ寸法が合わない**
+
+**「機関砲に関係する何か」説：まだ十分あり得る**
+
+というところ。
+
+ただ、これ、写真の中にかなり強力な「物差し」が偶然置いてあるのが笑える。人類は歴史的遺物の大きさを測るために、なぜか遊戯王カードの商品箱を使うのである。文明とはそういうものらしい。
+
+なお、**写真の物体そのものが何なのかを詰めるなら、「円筒の上下端の形状」と「側面にある小さな突起」の意味がかなり重要**。そこを見ると、単なる巨大な筒なのか、砲身系なのか、弾薬容器系なのか、かなり絞れそう。
+
+あなた:
+
+裏面の画像ね。これでヒント増えたんちゃう？
+
+　※写真張り付け
+
+ChatGPT:
+
+うん、これはかなりヒントが増えた。というか、前の写真だけで「20mm機関砲ではなさそう」と言ったのは正解で、裏面を見ると**ほぼ完全に「大型砲の薬莢」側に寄った**。
+
+まず、この中央の黒い部分。これはかなり典型的な**雷管（プライマー）**に見える。つまり円筒全体が「弾丸」ではなく、発射薬を入れて砲に装填する**薬莢**である可能性が極めて高い。薬莢の底に雷管があるので、写真の構造は非常に自然。
+
+そして外周の刻印が重要。
+
+右側に見える「16」は、たぶん単純な製造番号ではなく、**昭和16年**を示す「十六」の一部ではないかと思う。日本軍の弾薬では実際に「昭和16年＝1941年」を示す刻印が使われている。さらに製造月を数字で示す例も確認できる。たとえば日本軍の75×294R薬莢では、昭和16年5月製造、雷管が昭和16年4月製造という刻印例がある。https://forum.cartridgecollectors.org/t/need-help-dating-this-japanese-case-primer/68039
+https://forum.cartridgecollectors.org/t/need-help-dating-this-japanese-case-primer/68039?utm_source=chatgpt.com
+https://www.reddit.com/r/translator/comments/raba7x
+https://www.reddit.com/r/translator/comments/raba7x?utm_source=chatgpt.com
+
+そしてここがかなり面白い。
+
+写真の大きさが、最初の写真から推定した**長さ45～50cm、口径7～8cm程度**だとすると、候補として非常に綺麗に入ってくるのが日本軍の**75mm級砲弾薬莢**。
+
+特に、
+
+- 75×424R
+
+- 75×497R
+
+- 75×604R
+
+あたり。
+
+日本軍の75mm砲は、同じ75mmでも砲によって薬莢の長さが違う。75×294Rなら約29cm、75×424Rなら約42cm、75×497Rなら約50cm。実際、日本軍の弾薬資料にもこの系列が確認できる。https://forum.axishistory.com/viewtopic.php?f=65&t=139224
+https://forum.axishistory.com/viewtopic.php?f=65&t=139224&utm_source=chatgpt.com
+https://www.japaneseammunition.com/start.php?access=view&exp_sub_cat=211&main_cat=18&sub_cat=211
+https://www.japaneseammunition.com/start.php?access=view&exp_sub_cat=211&main_cat=18&sub_cat=211&utm_source=chatgpt.com
+
+そして**写真の45～50cmという推定値は、75×497Rにものすごく近い。**
+
+75×497Rを使う代表格が、あの**九〇式ではなく「八八式七糎野戦高射砲」**、つまりType 88 75mm高射砲。薬莢が497mm、口径75mm。https://forum.axishistory.com/viewtopic.php?f=65&t=139224
+https://forum.axishistory.com/viewtopic.php?f=65&t=139224&utm_source=chatgpt.com
+https://www.quartermastersection.com/japanese/artillery/687/Type88AA
+https://www.quartermastersection.com/japanese/artillery/687/Type88AA?utm_source=chatgpt.com
+
+だから現時点で俺なら、
+
+**「これは日本軍の75mm級砲弾の薬莢。特に75×497R、八八式七糎野戦高射砲用の可能性がかなり高い」**
+
+と見る。
+
+ただし、まだ「八八式」と断定するところまでは行かない。75×424Rもかなり近いし、写真だけでは実寸が分からないからね。
+
+で、もう一つ重要なのが「機関砲」という元スレの証言。
+
+これ、**証言者が「機関砲」と呼んでいるだけなら、かなり雑な呼称の可能性がある。** 現代人が75mm高射砲を見て「機関砲」と呼ぶのは用語としては間違いだけど、一般人なら十分あり得る。
+
+むしろ「じっじが支那事変から持ち帰った」という話と合わせると、75mm高射砲は時代的にも矛盾しない。八八式75mm高射砲は1927年制式化で、日中戦争から太平洋戦争まで使われている。https://ja.topwar.ru/159991-japonskaja-zenitnaja-artillerija-v-protivotankovoj-oborone.html
+https://ja.topwar.ru/159991-japonskaja-zenitnaja-artillerija-v-protivotankovoj-oborone.html?utm_source=chatgpt.com
+https://www.quartermastersection.com/japanese/artillery/687/Type88AA
+https://www.quartermastersection.com/japanese/artillery/687/Type88AA?utm_source=chatgpt.com
+
+さらに写真の底面を見ると、**中央の雷管＋その周囲に円形の段差＋巨大なリム状の外周**という構造が見えるので、「長い金属筒を何かに再利用した」より、最初から砲弾薬莢として作られたものと考えるほうがずっと自然。
+
+なので、今の暫定順位はこう。
+
+**第一候補：日本軍75mm砲用薬莢、75×497R級
+第二候補：75×424R級
+第三候補：その他の75mm級日本軍砲**
+
+そして「20mm機関砲弾」という線は、**ほぼ脱落**。
+
+なにより写真の巨大さと裏面の雷管が揃ったことで、「なんだこの巨大な筒」という段階から、**「あ、これ薬莢だわ」**というところまで一気に進んだ。
+
+あとは決定打になるのは、ほぼ一つ。**実物の全長と、底面の最大径を測ればいい。** 497mm前後なら、かなり話が決まってくる。人類、最後は定規に負ける。
+
+あなた:
+
+スレタイはこう。”歴史好きのワイちゃんが軍事資料を貼るだけ”
+
+貼られた写真が数十点。この直前には四斤山砲の弾丸まで持ってるから、ただの知ったかぶりではなく、軍事好き、資料読み込むの苦にならんタイプってのははっきりしてるね。
+
+追加情報入れて、もう一回底面の画像分析やって見て？
+
+　【著者注：裏面の文字を読み取ってなかったっぽいので、再度チェックを促す私】
+
+ChatGPT:
+
+うん、この追加情報で見立てはかなり変わる。というか、前回の「日本軍75mm薬莢、特に八八式かも」は撤回したほうがいい。底面の刻印が強すぎる。
+
+写真を読み直すと、ほぼ確実に読めるのが「VICKERS」「VSM」「1911」。そして「VSM」は **Vickers, Sons & Maxim** の略号。実際、VSMは1897年から1911年まで使われた会社名で、同社製の砲弾薬莢にもVSM刻印が残る。https://forum.cartridgecollectors.org/t/help-identifying-shell/49344
+https://forum.cartridgecollectors.org/t/help-identifying-shell/49344?utm_source=chatgpt.com
+https://www.antiques-atlas.com/antique/boer_war_tobacco_jar_from_vickers_sons_amp_maxim_case_a101/as1034a101
+https://www.antiques-atlas.com/antique/boer_war_tobacco_jar_from_vickers_sons_amp_maxim_case_a101/as1034a101?utm_source=chatgpt.com
+
+ここでスレタイと「四斤山砲の弾丸まで持っている」という情報が効いてくる。
+
+つまり、この人が「機関砲の弾」と言っているのを、こちらが「日本軍の20mm機関砲」と勝手に解釈する必要がない。むしろ本人は軍事資料を大量に持っていて、写真を淡々と貼っているわけだから、**「機関砲の弾」という素人向けのざっくりした表現をしているだけ**と考えるほうが自然。
+
+そして底面の「VICKERS」が決定的に面白い。
+
+Vickersは当然ながら英国の兵器メーカーで、VSM時代には砲・弾薬も製造していた。しかも検索すると、かなり早い時期のVickers製大型砲弾薬莢が実際に存在する。米国側の資料にも「75-mm Vickers-Maxim mountain gun」の薬莢や「3-inch R.F.」用薬莢が出てくる。https://www.govinfo.gov/content/pkg/SERIALSET-04675_00_00-007-0440-0000/pdf/SERIALSET-04675_00_00-007-0440-0000.pdf
+https://www.govinfo.gov/content/pkg/SERIALSET-04675_00_00-007-0440-0000/pdf/SERIALSET-04675_00_00-007-0440-0000.pdf?utm_source=chatgpt.com
+
+さらに、日本軍が使った75mm級薬莢との比較でも面白い。日本軍の75×497Rは全長497mmで、八八式75mm高射砲用。これは前回俺が出した候補。https://en.wikipedia.org/wiki/Type_88_75_mm_AA_gun
+https://en.wikipedia.org/wiki/Type_88_75_mm_AA_gun?utm_source=chatgpt.com
+https://forum.axishistory.com/viewtopic.php?f=65&t=139224
+https://forum.axishistory.com/viewtopic.php?f=65&t=139224&utm_source=chatgpt.com
+
+ところが今回の写真には**日本軍の造兵廠刻印ではなくVickers系の刻印がある**。
+
+したがって、少なくとも、
+
+「日本軍が製造した八八式高射砲薬莢」
+
+という線はかなり弱くなった。
+
+むしろ、
+
+**英国製Vickers系の砲弾薬莢が中国に存在し、それを日中戦争期に日本軍側の人間が入手して持ち帰った**
+
+というストーリーがかなり自然になる。
+
+そして「1911」も重要。ここは単純に「昭和16年」ではない。日本軍の刻印を想定していたから前回そう読んでしまったが、VSMという英国メーカー刻印と並んでいる以上、**1911年を示している可能性が相当に高い**。
+
+しかもVSMそのものが1911年までの社名なので、この「1911」という数字は時代的にも非常に面白い。Vickers, Sons & Maximは1897年から1911年まで存在し、1911年にMaxim退社後Vickers Ltd.へ移行している。https://www.americanrifleman.org/articles/2018/12/31/america-s-first-hiram-maxim-s-heavy-machine-gun/
+https://www.americanrifleman.org/articles/2018/12/31/america-s-first-hiram-maxim-s-heavy-machine-gun/?utm_source=chatgpt.com
+https://www.maximgun.de/england/303-machine-gun-mark-i/
+https://www.maximgun.de/england/303-machine-gun-mark-i/?utm_source=chatgpt.com
+
+つまり写真の底面は、
+
+「日本軍の弾薬だから昭和16年」
+
+ではなく、
+
+**「VSM時代の英国Vickers製、1911年前後の非常に古い薬莢」**
+
+という読み方がかなり有力になる。
+
+そしてここからが、スレの文脈を入れたときの一番面白いところ。
+
+「じっじが支那事変から帰還した時に持って帰った」
+
+という話なら、**弾薬そのものが1937年に製造された必要は全くない。**
+
+1911年製なら、その時点で26年前の弾薬。第一次大戦を経て中国に流れ、軍閥・中国軍・外国租界・輸出兵器などを経由して中国に存在していても全然おかしくない。そして1937年以降、日本軍が中国で鹵獲したものを兵士が持ち帰った、という経路も考えられる。
+
+むしろ「支那事変から帰ってきた」という情報と、**Vickers刻印＋1911**が同時に存在すると、
+
+「日本軍の弾薬を持ち帰った」
+
+より、
+
+**「中国で入手した外国製の古い砲弾薬莢を、戦利品・資料として持ち帰った」**
+
+という可能性が出てくる。
+
+しかも中国はこの手の「外国製兵器の博物館」みたいな場所だったので、英国製Vickers系兵器が存在していても全く不思議ではない。
+
+ただし、まだ一個だけ厄介な問題がある。
+
+**「VICKERS」の後ろに見える「I」が何なのか。**
+
+写真では「VICKERS I」と読める。これは単純なメーカー名＋「I」なのか、砲・薬莢の型式を示しているのか、あるいは刻印の一部なのかがまだ分からない。
+
+そしてここを解けると、**口径と薬莢長まで一気に特定できる可能性がある。**
+
+俺なら現段階ではこう整理する。
+
+「底面は薬莢である」→ かなり確度高い。
+「VSM＝Vickers, Sons & Maxim」→ ほぼ確定。https://forum.cartridgecollectors.org/t/help-identifying-shell/49344
+https://forum.cartridgecollectors.org/t/help-identifying-shell/49344?utm_source=chatgpt.com
+「1911＝製造年」→ かなり有力。ただし断定はまだしない。
+「日本軍75mm高射砲用」→ 前回より大幅に後退。
+「英国Vickers系75～76mm級砲用」→ かなり有力。
+「中国で日本軍が入手して持ち帰った」→ スレの証言とはかなり整合する。
+
+そして最初の写真で推定した**全長45～50cm級**という数字を維持するなら、ここがまた面白い。英国系の3インチ＝76.2mm級砲弾薬莢には、かなり大型のものが存在する。実際、QF 3-inch 20 cwtの薬莢は16インチ半ほどの長さ、つまり約419mmという実例もある。https://history.stackexchange.com/questions/72447/what-was-this-1917-shell-casing-used-for
+https://history.stackexchange.com/questions/72447/what-was-this-1917-shell-casing-used-for?utm_source=chatgpt.com
+
+だから今の俺の第一仮説は、
+
+**「Vickers/VSM製の3インチ＝76.2mm前後の古い英国系砲弾薬莢」**
+
+まで絞っていいと思う。
+
+ここまで来ると、最初の「20mm機関砲の弾」というレスがむしろ面白い。**20mmどころか、口径約76mm級の第一次大戦期Vickers砲弾薬莢を、スレ主が普通に持ってきている可能性がある。** 四斤山砲の弾丸も持っているという前後関係を考えると、「こいつ本当に軍事資料を集めて読んでる奴だな」という評価がかなり妥当になる。
+
+そしてこの場合、写真の「遊戯王箱」が単なる比較対象ではなく、**歴史資料の横に令和のカードゲームが置かれているという、時間軸が滅茶苦茶な比較スケール**になっていて非常に良い。1911年製Vickers薬莢と2026年の遊戯王。115年を一枚の写真に押し込む人類。地味に凄い。
+
+　＃～私からひとこと：「75mm砲弾」に引っ張られて逃げられないのはGPTもまた同じであった～
