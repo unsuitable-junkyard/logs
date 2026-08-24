@@ -1,0 +1,218 @@
+仮タイトル：いつもの迷惑メール晒したろって思ったらガチ運営でした！！　「Manus、26日にアカウント消すってよ」（小説のタイトル風味）
+
+あなた:
+
+クッソ怪しいメールがwww
+
+manus
+
+
+ACTION REQUIRED: Your account XXX will be deleted, back up data by August 23, 2026 at 7:59am SGT for future restoration
+
+Dear XXX,
+
+Manus will soon return to operating as an independent company, which will see us continue to serve our millions of users around the world.
+
+Your personal account XXX (XXX@gmail.com) and its data will be deleted between August 23, 2026 at 8:00am SGT and August 25, 2026 at 7:59am SGT, and the service will be unavailable during that period. We will provide a way for you to backup your data before deletion then restore your data once service resumes on August 25, 2026 at 8:00am SGT.
+
+This is unavoidable as part of Manus's transition to independent operations and to comply with regulatory requirements in specific jurisdictions. You can back up your data before the deletion is executed and restore it after Manus resumes independent operations to keep using Manus. We know this causes disruption, and we'll support you through every step of the process.
+
+The backup window is now open and will run until 7:59pm on August 22, 2026 EDT / 1:59am on August 23, 2026 CEST / 7:59am on August 23, 2026 SGT
+
+Affected data
+
+Task data
+
+What you need to do now
+
+Back up your Task data by August 23, 2026 at 7:59am SGT. Save the account package that will be sent in a separate email as well. Data that is not backed up cannot be restored after it is deleted.
+
+
+Back Up Task Data
+View the Data Backup Guide
+
+
+Restore your data after August 25, 2026 at 8:00am SGT
+
+Starting August 25, 2026 at 8:00am SGT, you can recover your data using the files you back up now.
+
+
+View the Data Restoration Guide
+
+
+If you have other personal accounts or belong to other teams, check the separate email for each one. For help, contact Manus Support.
+
+All dates are based on Singapore Time (SGT). The backup window is also shown in the corresponding U.S. Eastern and Central European time zones.
+
+
+The Manus Team
+
+ざっくり翻訳と評価、よろしくですぜ。
+
+Gemini:
+
+「アカウント削除」「期限切迫」「リンクを踏ませる」というフィッシング詐欺の教科書のような役満構成ですが、結論から言うとこれ、マジで公式からの本物（ガチ通知）です。
+
+## 1. ざっくり翻訳
+
+**件名:** 【要対応】アカウントが削除されます。将来の復元のため2026年8月23日 7:59am (SGT) までにデータをバックアップしてください
+
+AI革命
+
+**本文の要点:**
+
+-
+**背景:** ManusはまもなくMetaからの分離を完了し、再び独立企業として運営を開始します。
+
+AI革命株式会社
+
+-
+**アカウント削除と停止期間:** 独立への移行および特定の法域における規制遵守のため、あなたのアカウントとデータは **8月23日 8:00am 〜 8月25日 7:59am (SGT)** の間に一度削除され、この期間はサービスが利用不可になります。
+
+Reddit
+
+-
+**やるべきこと:**
+
+AI革命
+
+-
+**8月23日 7:59am (SGT)** [※日本時間 8:59am] までにタスクデータをバックアップしてください。
+
+AI革命
+
+-
+別途メールで届く「アカウントパッケージ」も保存しておいてください。 ※バックアップしなかったデータは削除後、二度と復元できません。
+
+AI革命
+
+-
+**データの復元:** **8月25日 8:00am (SGT)** [※日本時間 9:00am] 以降、保存したファイルを使ってデータを復元できるようになります。
+
+AI革命
+
+## 2. 評価・解説
+
+-
+**判定:** **本物（公式通知）**
+
+AI革命株式会社
+
+-
+**送信ドメイン:** noreply@mail.manus.im（Manus公式ドメイン manus.im）
+
+-
+**なぜこんな怪しいことになっているのか:** MetaによるManusの買収（2025年12月）に対し、各国・地域の規制当局から手ったたき（取引撤回命令等）が入り、Metaから強制的にお手盛りで分離・買い戻しをさせられるという大人の事情が発生したためです。Meta傘下時代に溜め込んだデータを物理的にリセットして分離・独立しないと法的にマズい、という前代未聞の理由による巻き戻し作業です。
+
+株式会社インプレス
+
+## 3. 日本時間（JST）でのタイムライン
+
+-
+**バックアップ締め切り:** **2026年8月23日（日）午前 8:59 まで**
+
+AI革命株式会社
+
+-
+**サービス停止・データ削除:** **8月23日（日）09:00 〜 8月25日（火）08:59**
+
+Reddit他 1 件
+
+-
+**復元ポータル解禁:** **8月25日（火）午前 09:00 以降**
+
+TechNode他 1 件
+
+## どうすればいいか？
+
+Manus Help Center
+
+見た目がフィッシングメール並みに香ばしいため、メール内のボタンやリンクを踏むのが気持ち悪い場合は、**普段使っているブラウザから直接 manus.im（公式サイト）にアクセスしてログイン**してください。マイページ・設定画面上でも同様のバックアップ案内が出ているはずです。
+
+Manus上に消えて困るタスクデータや生成物がある場合は、**8月23日（日）午前8:59までに**必ずバックアップを済ませておくことをおすすめします。
+
+あなた:
+
+というかManus.imが初見過ぎてわからんぜw
+Metaのサービスの一つ？
+
+Gemini:
+
+**Manus（manus.im）** は、ユーザーの代わりにクラウド上の仮想PCを操作し、リサーチやデータ収集、コード作成などの複雑な作業を自動完了させる「自律型AIエージェント」サービスです。Meta直属の自社ブランドではなく、元々は新興のAIスタートアップが開発したプロダクトです。
+
+**サービスの特徴**
+
+- **全自動でタスク完遂:** ChatGPTのように文章を返すだけでなく、「競合他社を調べてExcelにまとめといて」と言えば、裏でブラウザを動かして資料まで作ってくれるのが売り。
+
+**なぜMetaの名前や「独立」の話が出るのか**
+
+- ビッグテック（Meta）がAIスタートアップの技術を取り込むために買収・統合を進めたものの、各国の規制当局から「AI市場の独占にあたる」と厳しい待ったがかかり、自立した別会社として切り離さざるを得なくなった、という企業都合のゴタゴタが背景にあります。
+
+**初見なのにメールが届いた理由**
+
+-
+**過去の「とりあえず登録」:** 自律型AIがSNSで話題になった際、Google連携などで軽い気持ちでウェイトリスト登録やログインをした記憶が埋もれている。
+
+-
+**関連サービスとの共通アカウント:** 提携AIツール（Monicaなど）の利用時に連携アカウントが作成されていた。
+
+使った記憶がまったくなく、放置しても困るデータがないのであれば、バックアップも復元もせず**完全にスルー（放置）してアカウントごと消滅させてしまって問題ありません**。
+
+あなた:
+
+ああ、おそらくAIいじったときに、GPTあたりから聞いて、一回くらいGoogleアカウントでアクセスしたのかもしれんw
+それなら「お前アカウント持ってるよな？」って流れなるわけだね？
+
+Gemini:
+
+まさにその通りです。「Googleでログイン」のボタンをポチッと1回押した瞬間に、裏のデータベースでは立派な「正式ユーザー」として刻まれますからね。
+
+-
+**「チラ見」でも会員扱い:** 本人は試しに足を踏み入れただけのつもりでも、システム側からすれば「アカウント保有者」の一員です。
+
+-
+**一斉送信の対象に:** その結果、今回のような「サービス停止・データ削除」という重々しい通知メールが容赦なく届くことになります。
+
+「過去にちょっと冷やかしで触ったツケが、巡り巡ってフィッシング詐欺みたいな顔をして帰ってきた」というオチです。
+
+記憶にすらないレベルであれば、何もせずそのまま放置して、この機会に奇麗さっぱりアカウントごと消滅させてやるのが一番平和ですね。
+
+あなた:
+
+で、今回Metaが買い取るから、アカウント全消去するぞと。
+ああ、ようやく納得いったぜw
+どう考えてもフィッシングだろ！と思ったけど、今回はガチでしたかwww
+
+Gemini:
+
+惜しい、流れが**真逆**です！
+
+買い取るんじゃなくて、「買い取ったものの当局にお説教されたから、手放して独立（手切れ）させます」という流れです。
+
+Metaのデータ基盤やインフラから完全に引き剥がして「他人」に戻る必要があるので、Meta傘下時代のデータベースを一度物理的に爆破して更地に戻さざるを得ない、という大人の事情ですね。
+
+「急げ！アカウントが消去されるぞ！リンクを踏んでバックアップしろ！」なんて、セキュリティ講習で真っ先に「絶対にクリックするな」と教わるフィッシング詐欺のテンプレ文脈そのものですが、企業側の事情のせいで「リアルに公式な超迷惑メール」という珍品に仕上がっています。
+
+まあ、放置しておけばそのまま綺麗さっぱり消滅してくれるので、このまま見送ってあげるのが一番平和です。
+
+あなた:
+
+あ、ほんまや「分離する」ってGeminiが書いててくれたねw
+で、.imって聞かんよな？　どこのドメイン？
+
+Gemini:
+
+**.im は、イギリス海峡に浮かぶ自治領「マン島（Isle of Man）」に割り当てられた国別トップレベルドメイン（ccTLD）です。**
+
+なぜテック企業やAIサービスがわざわざマン島のドメインを使っているのかというと、主に以下の理由からです。
+
+-
+**「I'm（アイム）」に見立てた語呂合わせ** 「I am...」の略語に見立てられるため、サービス名と繋げて文字遊びができます。manus.im も実質「I'm Manus（オレがマナスだ）」と名乗るブランディングです。
+
+-
+**Instant Messaging（即時通信）の略** チャットツールや対話型・自律型AIエージェントなど、「即レスするサービス」との親和性が高いためテック界隈で好まれてきました。
+
+-
+**.com や .ai の高騰・枯渇** 王道の .com は取得困難、近年のAIバブルで .ai（カリブ海のアンギラ領）の取得費用が爆増したため、短くて格好がつく「穴場」として選ばれています。
+
+日本での知名度が壊滅的なせいで「見たこともない怪しい中華系スパムドメイン」に見えてしまうのも、今回のメールが胡散臭さを爆発させていた原因の一つです。
