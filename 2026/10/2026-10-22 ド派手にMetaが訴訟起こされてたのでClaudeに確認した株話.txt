@@ -1,0 +1,300 @@
+日時：2026-10-22
+タイトル：ド派手にMetaが訴訟起こされてたのでClaudeに確認した株話
+文字数：13149
+---
+
+### ド派手にMetaが訴訟起こされてたのでClaudeに確認した株話
+
+　文字数：14000
+
+**👤You:**
+
+[メタ、売上高約10.2兆円で増収増益──株式分割でザッカーバーグの経営権維持へ | Forbes JAPAN 公式サイト（フォーブス ジャパン）](https://forbesjapan.com/articles/detail/106995)
+
+この記事読めそう？　無理なら貼るわ。
+
+---
+
+**🤖Claude:**
+
+読めたで。全文取れてる。
+
+**中身はこんな感じ**
+- **決算**：第3四半期の売上高は646億ドル（約10.2兆円）で前年同期比26%増。純利益は98億ドル、EPSは3.83ドル。前年の利益が少なかったのは、約160億ドルの一時的な税負担のせい。
+- **株式分割**：クラスA株主に、同数の議決権なしクラスC株を配る。株数は倍になるのに、ザッカーバーグの議決権比率は変わらん。経営権はそのまま。
+- **設備投資**：今期通期は1350〜1450億ドルの見込みで、下限を引き上げた。第3四半期だけで349億ドル。
+- **訴訟**：ニューメキシコ州に250億ドルの支払い命令（個人情報の扱いで消費者を誤解させたと陪審が認定）。10代のSNS依存をめぐる和解金は約180億ドルで、その約半分を費用に織り込み済み。
+- **AI**：パーソナルAIエージェント「Muse」が40日で1000万DL超。ザッカーバーグは「数十億人が使う」「極めて高い収益性」と強気で、計算コスト効率も2027年10月までに10倍にすると言うてる。
+- 決算後の株価は3%超上昇して723ドル。ザッカーバーグの純資産は約38兆円。
+
+**気になったとこ**
+- 250億ドルの支払い命令は、今期の四半期純利益98億ドルの2.5倍。普通の会社なら吹き飛ぶ額なのに、記事の扱いは「ついで」で、株価は上がってる。罰金が決算の脚注になる規模の会社、というのがもう異常。
+- 株式分割は普通「個人投資家が買いやすくなる」話やけど、今回の主役は議決権のほう。株を配るふりして「経営権は渡さん」と言うてる。分割の看板で防衛策を出してきた形。
+- 巨額の設備投資と巨額の和解金を同じ決算で出して、AIの「数十億人」で押し切る構図。AI投資をやめられへん理由と、金を持ってる理由が、同じ記事の中で両方見える。
+
+貼り直しは要らんで。
+
+Sources: [Forbes JAPAN](https://forbesjapan.com/articles/detail/106995)
+
+---
+
+**👤You:**
+
+いやあ、今回気になったのは訴訟ですわ。4兆円近くを「ニューメキシコ州に払え」ってさ。これ通ったら、残りの49州も立ち上がってMeta吹き飛ばね？って思ったのよ。
+
+なんて言うか、なんで州が訴えてるのかとかさ。アメリカの裁判が雑に思えてくるわけねえw
+「おいお前、四半期で12兆円儲けたのか？　3割よこせ」みたいに見えるでしょ？
+
+---
+
+**🤖Claude:**
+
+「残り49州が立ち上がる」は、実はもう済んでる。しかもMetaが先に安く片付けてるっぽい。
+
+**47州はもう示談で降りてる**
+今年8月にMetaは約180億ドルの多州和解に合意してて、これは参加48州についてCambridge Analytica関連の責任も免責される中身。NMだけがこれに乗らず、単独で裁判に進んだ。 構図としては「他の州は示談で受け取って、NMだけ博打に出て当たった」。判事も、裁判に出るのは賭けみたいなもんやと言うてる。
+
+**3割よこせ、より雑な計算式**
+計算は利益ベースですらなくて、「1違反あたり最大5000ドル × 件数」。陪審が認定した違反は4300万件超で、満額なら2000億ドル超になる。 NMの人口は210万人ちょいやのに、件数は4300万件。そら雑に見えるわw しかもこの法律、実害の立証は要らず、害の可能性で足りる。
+
+あと、12兆円は第4四半期の売上予想の上限で、利益ちゃう。純利益で見ると、今回の約4兆円は「3割よこせ」どころか四半期純利益の2.5倍。NM住民1人あたり190万円弱になる。
+
+**それでも吹き飛ばない理由**
+アメリカの裁判は「陪審が天井までふっかけて、判事が憲法で削る」二段構えらしい。州側の弁護士ですら、満額は適正手続の面で無理やと認めて、理論上限の約2割にあたる350〜400億ドルを請求した。Meta側は34.5億ドルで頭打ちにしろと主張。 ここから値切り合戦になる。
+
+判事も、47州合計で170億ドル台の和解と比べて、1州の巨額請求は適正手続的にもっと小さくなるはずという感触を示してた。 3月の子ども安全の裁判でも、州が求めた約21億ドルに対して、陪審が出したのは3.75億ドルで2割弱。 満額にはなってへん。
+
+Forbesの250億ドルは、検索では判決本文まで拾えへんかった。けど、その350〜400億ドルと34.5億ドルの間に着地した形やね。記事は「陪審が」と書いてるけど、金額を決める役は判事のはずで、その辺もこの記事ちょい雑。
+
+**なんで州が訴えてるのか**
+消費者保護法で、州司法長官が州民の代わりに「嘘ついて商売した会社」を訴えられる。賠償やなくて罰金（民事制裁金）やから、被害額と無関係に件数でどんどん膨らむ。3月の裁判では、民間の弁護士が州司法省と並んで州の代理に立ってた。
+
+決算後に株価が3%上がったのも、「払うけど、削られて、控訴で長引く」と市場が見てるからっぽい。
+
+Sources:
+- [Courthouse News](https://www.courthousenews.com/articles/facebook-faced-with-massive-penalties-after-new-mexico-privacy-verdict)
+- [The Next Web](https://thenextweb.com/news/meta-new-mexico-jury-cambridge-analytica-verdict)
+- [The Standard](https://www.thestandard.com.hk/world/article/343910/Jury-finds-Meta-liable-in-Cambridge-Analytica-case)
+- [Capital.com（Reuters報道）](https://capital.com/en-ae/news/new-mexico-wants-meta-to-pay-up-to-40-billion)
+- [MLex](https://www.mlex.com/mlex/data-privacy-security/articles/2457181/for-meta-other-platforms-historic-new-mexico-verdict-could-signal-legal-trouble)
+- [Source NM](https://sourcenm.com/2026/03/23/new-mexico-meta-make-closing-arguments-to-jury-over-case-alleging-harm-to-states-youth/)
+- [Forbes JAPAN](https://forbesjapan.com/articles/detail/106995)
+
+---
+
+**👤You:**
+
+えーと、つまりだな。
+
+47州：手打ち済、合計170億ドル、平均で1州あたり3億ドル強支払い済み
+ニューメキシコ：勝負に出て勝って「今から値切り交渉始まる」　金額は34.5億ドルー400億ドルのどこか
+
+これ、国家のすることなんやろか？wwwww
+
+---
+
+**🤖Claude:**
+
+ほぼその理解でええんやけど、2点だけ補足させて。
+
+**1. 「値切り交渉はこれから」は、もう終わってるかも**
+Forbesは「250億ドルの支払い命令」と書いてる。検索では判決本文まで拾えてへんから確証はないけど、34.5億〜400億ドルの間の250億ドルに着地した可能性が高い。ただしMetaは控訴する余地があるから、「今から値切り」やなくて「次の値切り（控訴審）が待ってる」くらいが正確かも。
+
+**2. 人口で割ると、格差がエグい**
+47州の平均は1州3.6億ドルくらいやけど、州の人口はバラバラやから平均はあんま意味ない。47州の人口を合計3億人弱と雑に見ると、1人あたり約57ドル（8000円ちょい）。NMは250億ドル ÷ 210万人で、1人あたり約1万2000ドル（約190万円）。**同じMetaに騙された住民でも、NMだけ約200倍**になる。
+
+**「国家のすることか」について**
+国家ちゃうで、州やで、が最初のツッコミ。ただ、州が訴訟で巨額を取るのはアメリカの伝統芸でもある。1998年のタバコ和解は2000億ドル超で、オピオイド和解も260億ドル規模。 NMがやってるのは、その「訴訟で取る」の中に、「1件5000ドル × 件数」という掛け算が生んだバグみたいな天井を発見したパターンやな。
+
+州は課税の自由度が限られてるから、実質は「罰金という名の歳入」で、国家というより、ちょっと大きめの地方自治体が大企業に請求書を投げてる感じに近い。しかもその請求書の単価が法律で固定やから、件数の数え方次第で桁が変わる。
+
+Sources:
+- [Courthouse News](https://www.courthousenews.com/articles/facebook-faced-with-massive-penalties-after-new-mexico-privacy-verdict)
+- [Forbes JAPAN](https://forbesjapan.com/articles/detail/106995)
+
+---
+
+**👤You:**
+
+州と言えども「国家」かなあ？　私の理解ではね。
+何やろ、便宜的には違うかもなんやけど「公」の判断で行う集合体で、その地域では最上位の法律を制定できる存在、やからねえ？
+
+これ、やりすぎたら「NM」はMetaのサービス配信しませんっていう「おま国」ならぬ「おま州」が起きてもおかしくないよね？
+
+---
+
+**🤖Claude:**
+
+定義としては、あんたのほうが筋ええわ。さっきの「国家ちゃうで」は雑なツッコミやった。英語の"state"はそもそも国家と同じ単語で、アメリカは建国時「主権を持つ13の国が連合した」建付け。今でも州は独自の議会・裁判所・警察権を持ってて、連邦とは別に起訴もできる。
+
+ただし「最上位」だけは満たしてなくて、連邦憲法と連邦法が上に乗ってる。だから「半国家」くらいが正確やと思う。NMがMetaに適正手続や言論の自由を盾に反撃されてるのも、この「上」があるから。
+
+**おま州は、もう起きかけてる**
+Metaは実際に脅しをかけてる。4月末の裁判所への提出書面で、NMが求める差止め（年齢確認の義務化など）が通ったら、アプリを州から引き上げざるを得ないかもと警告した。 理由は、NMだけのために別アプリを作るのは経済的にも技術的にも合わんから。
+
+NM側の司法長官は、他州でも同じ訴訟を抱えてて数百万人のユーザーを失えんはずやから、これは時間稼ぎの脅しやと言うてる。
+
+前例もある。BlueskyはMississippiの年齢確認法に対して、州ごとアクセスをブロックした。 PornhubもMississippi、Virginia、Utahを遮断してる。 州単位のブロックは、これまでアダルトサイトにほぼ限られてたらしく、Blueskyの件は異例とされた。
+
+**脅しの中身は「金」やなく「仕様」**
+ここ、見落としやすい。Metaが「出てく」と言うてるのは、4兆円の罰金に対してやなくて、アプリの作り方を裁判所に指図される差止めに対して。250億ドルは、四半期の設備投資349億ドルの約7割やから痛いけど一発で終わる。でも仕様変更命令は、毎年のコストになる上に、他州がコピーできる「設計図」になる。Metaが本気で嫌がるのはこっちやろな。
+
+NMは米国人口の0.6%ほどやから、Metaにとって撤退の痛みは小さい。ただ、それで通ってしまうと「州ごとの規制を脅しで潰せる」前例になるし、逆に居座って従えば、他州にも同じ型を要求される。どっちに転んでも前例が重い。
+
+差止めの判断が実際どうなったかは、今回の検索では拾えてへん。
+
+Sources:
+- [Fox Business](https://www.foxbusiness.com/technology/meta-threatens-pull-facebook-instagram-from-new-mexico-over-child-safety-trial-requirements?.tsrc=rss)
+- [Source NM / States Newsroom](https://www.newsfromthestates.com/article/meta-says-it-could-withdraw-facebook-and-instagram-new-mexico-pending-bench-trials-outcome)
+- [KOB 4](https://www.kob.com/new-mexico/meta-threatens-to-cut-off-facebook-and-instagram-in-new-mexico/)
+- [MediaPost](https://www.mediapost.com/publications/article/414771/meta-warns-it-might-exit-new-mexico.html)
+- [Techdirt](https://www.techdirt.com/2025/08/25/mississippis-broken-age-verification-law-forces-bluesky-to-block-all-state-users/)
+- [TechCrunch](https://techcrunch.com/2023/07/03/pornhub-blocks-access-in-mississippi-virginia-and-utah-amid-changing-laws/)
+- [Route Fifty](https://www.route-fifty.com/digital-government/2025/08/bluesky-blocks-access-mississippi-citing-free-speech-and-privacy-concerns-over-age-verification-law/407680/)
+
+---
+
+**👤You:**
+
+ステイツって、もともと州ごとの法律違いすぎるやん？　宗教、酒、ギャンブル、移民。
+まちまちの感情もってる上にこうやって金額見るとねえ？
+ちなみにこの4兆円近くっていう金額。州の歳入からするとそこまでデカいってわけでもないんやろ？
+
+私が気になるのは「被害を被った住民」の算出もガバ。その賠償の行く末が州ってのがイミフなんですわよw
+代行訴訟よりもえぐいことなってないかい？
+
+---
+
+**🤖Claude:**
+
+州ごとの違い、そこは言う通りで、酒もギャンブルも宗教も、連邦が口を出さない領域は州がバラバラに決めてる。消費者保護法の罰金設計も例外やなくて、NMは「1件5000ドルまで」という枠を持ってる。
+
+**4兆円は、州にとってデカいどころちゃう**
+NMの一般会計は、FY27の経常支出が約112億ドル。 FY26の運用予算は約108億ドルで、 経常収入の見込みは約139億ドル。 250億ドルは、**年間の一般会計支出の2倍超、経常収入の1.8倍**になる。円換算で、州の年間一般会計が約1.8兆円、そこに4兆円。州が受け取るにはデカすぎて、使い道の議論から始まるレベルやね。
+
+**さっきの数字の訂正**
+「47州で170億ドル」と言うたけど、あれは主に子ども・若者の被害をめぐる和解で、Cambridge Analytica分は別枠。今夏、MetaはCambridge Analyticaなどの案件を46州と2準州で解決するのに4.59億ドルを払った（NMは不参加）。 1州あたり約1000万ドルやから、NMの250億ドルは、同じ事件で**2500倍前後**の差になる。同じ事件の「単価」が州ごとにここまで違うのは、さっきの「州ごとにバラバラ」の極端な実例やな。
+
+**住民の被害算定がガバいのは、そもそも被害を数えてないから**
+陪審は、Metaの29の発言のうち26が誤解を招くと認定した。 それを住民に届いた分で数えて4300万件。単純に210万人で割ると1人あたり約20件になる。Meta側も「実際に騙されたと証明してへん」と主張してた。 でも、この法律は実害の立証が要らず、害の可能性で足りる。
+
+しかも州が取るのは、住民への賠償やなくて自分への罰金。3月の子ども安全の件でも、判事が命じた5.67億ドルは若者支援基金に入って、配り方は州議会次第。 今回の判決でも、州が実際に受け取るのは何年も先になるらしい。 住民には直接1円も行かへん。
+
+**代行訴訟（クラスアクション）と比べると**
+クラスアクションなら、被害の立証が要るし、賠償は被害者に配られる（弁護士費用は引かれる）。今回の州の訴訟は逆で、被害立証は不要、取るのは罰金、受け取るのは州、使い道は議会。構造的には、確かにクラスアクションよりもえぐい。NMが使ってる法律は1970年制定で、 たぶん「デジタルで件数が数千万に膨らむ」ことは想定してへんかった。1970年の罰金単価に、2026年の件数を掛けたら桁が飛んだ、というのが今回の正体やと思う。
+
+ただ、その分ブレーキもある。判事自身が、州の請求を「憲法違反レベル」と言うてたし、 判決は10月末までに出すと言うてたから、 Forbesの250億ドルはその判断やと思う（判決本文は未確認）。
+
+Sources:
+- [NM 州予算局 FY27概要](https://www.nmdfa.state.nm.us/wp-content/uploads/2026/03/FY27-Budget-Overview-Executive-Summary.pdf)
+- [NM 州予算局 FY27予算要求](https://www.nmdfa.state.nm.us/fiscal-year-2027-state-agency-budget-requests/)
+- [NM 議会財政委員会 FY27勧告](https://www.nmlegis.gov/Entity/LFC/Documents/Session_Publications/Budget_Recommendations/2027RecommendVolI.pdf)
+- [Bloomberg Government](https://news.bgov.com/states-of-play/new-mexico-seeks-40-billion-penalty-from-meta-in-historic-trial)
+- [Albuquerque Journal](https://www.abqjournal.com/news/new-mexico-seeks-a-judgment-up-to-40-billion-from-meta/3133708)
+- [Benzinga（Reuters報道）](https://www.benzinga.com/node/62125981)
+- [Boston Globe](https://www.bostonglobe.com/2026/08/07/nation/meta-ordered-pay-567-million-new-mexico-child-safety-case/)
+- [The Next Web](https://thenextweb.com/news/meta-new-mexico-jury-cambridge-analytica-verdict)
+
+---
+
+**👤You:**
+
+アメリカ人でもないし、ニューメキシコも行ったことないし、Metaの株主でしかないから何とも言えんのやけどねえ。
+払えるからと言って「おい、4兆円払え」ってのさ。EU,ステイツ連邦政府、州。みんな割とやり放題やってるよなあと思う時はありますわw
+
+こういうものってさ「是正勧告」したうえで、それでも尚さんから巨額の罰金ってのはまだわかるんやけどさ。
+何だろ、IT各社、特にGoogle,MSFT,Metaはフルボッコでよく燃えてるイメージあるわあw
+
+---
+
+**🤖Claude:**
+
+是正勧告からの罰金って流れ、Metaは**もう通過済み**やねん。
+
+**勧告 → 違反 → 罰金、はもう3周目**
+2012年にFTCが同意命令（要は「プライバシーの約束を守れ」の勧告）を出してて、それに違反したとして2019年に当時過去最高の50億ドルを払った。 その後もFTCは、2020年の命令にも違反してるとして、2023年にまた動いてる。「3回目」と呼ばれてた。 Cambridge Analytica関連だけで、FTCの51億ドルとユーザー和解7.25億ドルを払ってて、 州司法長官との和解も含めた累計は約60億ドルとされる。 NMの250億ドルは、そこへのさらなる上乗せやね。
+
+**罰金が安すぎて、エスカレートしてる説**
+2019年の50億ドルは、Meta自身が事前に30〜50億ドルと予告してて、市場は動揺せず株価は5%上がった。 罰金が「織り込み済みの経費」になってたわけや。効かへんから当局が、額をつり上げる（NM）か、仕様を縛る（EU）方向に走ってる、という見方もできる。「やり放題」の裏には「やられても平気やった」がある。
+
+**EUは額だけ見ると、むしろ小さい**
+DMAでの罰金は、Apple 5億ユーロ、Meta 2億ユーロ（2025年）、Google 8.9億ユーロ（2026年7月）。 Googleの分は売上の0.22%で、上限の10%には全然届いてない。 Googleは約20年の累計でも約104億ユーロ。 EUの本命は金より仕様で、Meta自身が「事業モデルを変えさせるのは、実質的に数十億ドル規模の関税や」と言うてた。
+
+並べると、同じフルボッコでも手口が3種類ある。EUは「小額やけど仕様を縛る」、連邦は「勧告してから罰金」、NMは「巨額をふっかけて憲法で削られる」。金額だけで異常なのはNMで、250億ドルはMetaの年間設備投資（1350〜1450億ドル）の2割弱。払えるけど、無視はできんサイズやね。
+
+燃えてるイメージが強いのは、罰金が絶対額で報じられて、売上比が書かれへんのも大きいと思う。
+
+Sources:
+- [Bloomberg Government](https://news.bgov.com/states-of-play/meta-loses-new-mexico-jury-trial-over-cambridge-analytica-data)
+- [AP（Barchart転載）](https://www.barchart.com/story/news/33473952/settlement-reached-in-investors-lawsuit-against-meta-ceo-mark-zuckerberg-and-other-company-leaders)
+- [Wilson Sonsini](https://wsgr.com/en/insights/round-three-ftc-proposes-further-restrictions-on-metas-privacy-practices-and-a-complete-prohibition-on-meta-monetizing-youth-data.html)
+- [Hartford Business（2019年の予告と株価）](https://hartfordbusiness.com/article/facebook-expects-ftc-fine-could-be-as-much-as-5-billion/)
+- [RTHK（EUのGoogle罰金）](https://news.rthk.hk/rthk/en/component/k2/1863359-20260724.htm)
+- [Reuters（Tribune転載）](https://tribune.com.pk/story/2619825/google-hit-with-1b-eu-fine-in-constructive-talks-to-avoid-more-penalties)
+- [Fox Business（EUのApple・Meta罰金）](https://foxbusiness.com/media/eu-hands-apple-meta-massive-fines-despite-warnings-from-trump)
+- [Tech Economy](https://techeconomy.ng/eu-slaps-apple-meta-with-797-million-fines)
+- [Forbes JAPAN](https://forbesjapan.com/articles/detail/106995)
+
+---
+
+**👤You:**
+
+まあ、ぶっちゃけIT各社も、ねえ？　プライバシーとは、とか思うこともなくはないけどさあw
+EULAなんてまともに読んどるやつおりゅ？って言いたくなるのは事実。
+
+でも、やっぱり州が巨額の金額得るのはちょっともやっとくるぜw
+
+---
+
+**🤖Claude:**
+
+EULAは読まれへん、プライバシーは雑、でも州が取るのはもやっとする、全部成り立つ感覚やと思う。
+
+**EULAとは、実は別軸の話**
+今回の評決は、規約の文面を読んでなかった利用者の話やなくて、Metaと幹部が公に言うた説明の問題。陪審は29の発言を見て、26が誤解を招くと認定してる。 Meta側は「実際に騙されたとは証明されてない」と反論してたけど。 規約が誰にも読まれへん時代やからこそ、責任の根拠が契約書の文面から公式発言へ移ってる、とも読める。読まれへん長文より、広報の一言のほうが法廷では重い。
+
+**もやっとの正体は、起訴した側が受け取る構造**
+被害者の代理として訴えて、罰金は州の財布に入って、使い道は議会次第。その不安は、タバコ和解で前例がある。1998年、46州が約2060億ドルで和解したけど、使途は縛られてなくて、 困った年に一般会計の穴埋めに回した州が多かった。 約20年の累計で、和解金と煙草税の合計4534億ドルのうち、予防・禁煙プログラムに回ったのは118億ドル（約2.6%）。
+
+NMの3月の件は、そこを意識してか、判事が5.67億ドルを若者支援基金に入れさせて、4.2億ドルは治療サービス向けと指定してる。 ただ、その配分も議会が決める。 今回の250億ドルの使途は、検索では確認できてへん。しかも州が受け取るのは何年も先になるらしい。
+
+NM住民210万人で割ると1人190万円弱になるけど、そう配られる設計にはなってへんのも確か。
+
+Sources:
+- [Benzinga（Reuters報道）](https://www.benzinga.com/node/62125981)
+- [Boston Globe](https://www.bostonglobe.com/2026/08/07/nation/meta-ordered-pay-567-million-new-mexico-child-safety-case/)
+- [Albuquerque Journal](https://www.abqjournal.com/news/new-mexico-seeks-a-judgment-up-to-40-billion-from-meta/3133708)
+- [Youth Today（Broken Promises報告の紹介）](https://youthtoday.org/2018/12/broken-promises-to-our-children-a-state-by-state-look-at-the-1998-tobacco-settlement-20-years-later/)
+- [Fox News（AP報道）](https://www.foxnews.com/politics/report-says-anti-smoking-programs-underfunded-despite-tobacco-settlement)
+- [American Lung Association](https://www.lung.org/blog/who-benefit-tobacco-settlement)
+
+---
+
+**👤You:**
+
+タバコの賠償は草w　２０６０：１１８＝2.6%ってさ。それ、結局「お金欲しかっただけですぅ！！」って財源に溶かしとるやんけwwwww
+
+政治のいつもの光景よなあw　日本だけちゃうかったんや！！
+
+---
+
+**🤖Claude:**
+
+草やろw ただ、分母だけ訂正させて。2.6%の分母は2060億ドルやなくて、約20年間の和解金と煙草税の受取累計4534億ドル（和解金1567億ドル＋煙草税2967億ドル）。 その中から予防・禁煙に回ったのが118億ドルや。和解金だけを分母にしても1割に届かんから、「溶かした」という結論は変わらんけどな。
+
+ただ、全部が悪さとも言い切れん。あの和解の建前は「州が負担した喫煙関連の医療費の補償」やった。 実際、州知事協会側は「他に財源がなければ低所得者医療（メディケイド）を削るしかなかった」と反論してた。 医療費に回ったなら、建前とは筋が通る。
+
+本当に草なのは別の溶け先で、サウスカロライナは和解金の15%をタバコ農家の支援に、ノースカロライナは75%をタバコ生産関連に使った。 **タバコ会社から取った賠償金で、タバコ農家を助けた**わけや。建設事業に回した州もある。
+
+日本は、たしか道路特定財源が2009年に一般財源になった。目的税として取ったものを後から溶かす日本式に対して、アメリカは最初から使途不問で取る方式やから、溶け方の違いはあっても、構図はほぼ同じやな。
+
+NMが3月の件で、判事に使途まで指定させたのは、このタバコの失敗を踏まえたんかもしれん。今回の250億ドルがどうなるかは、まだ見えてへん。
+
+Sources:
+- [Youth Today（Broken Promises報告の紹介）](https://youthtoday.org/2018/12/broken-promises-to-our-children-a-state-by-state-look-at-the-1998-tobacco-settlement-20-years-later/)
+- [American Lung Association](https://www.lung.org/blog/who-benefit-tobacco-settlement)
+- [California Healthline](https://californiahealthline.org/morning-breakout/american-lung-association-report-finds-states-using-settlement-money-for-budget-deficits)
+- [KFF Health News](https://kffhealthnews.org/morning-breakout/dr00034062)
+- [Scientific American](https://www.scientificamerican.com/blog/news-blog/tobacco-settlement-money-squandered-2008-11-18/)
+
+---
