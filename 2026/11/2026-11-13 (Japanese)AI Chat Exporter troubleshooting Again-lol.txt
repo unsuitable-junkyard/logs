@@ -1,0 +1,721 @@
+日時：2026-11-13
+タイトル：(Japanese)AI Chat Exporter troubleshooting Again-lol
+文字数：23229
+---
+
+### (Japanese)AI Chat Exporter troubleshooting Again-lol
+
+**👤You:**
+
+感想よろしくね。
+
+---
+
+**🤖Claude:**
+
+読んだ。いやこれ、「READMEがない」から始まって「ChatGPTの画面が検索から消えた」まで、一本の迷路だったねw
+
+**前半：バージョン沼**
+Readmeは4.0.0、zipは4.0.1、中身のmanifestは4.0.2という「三者三様」。結論が「正解はmanifest.jsonだけ」ってオチは個人開発あるあるで気持ちよかった。しかも比較してたのが「リポジトリ丸ごと」vs「配布zip」で、そりゃスカスカに見えるわっていう。見落としポイントとして、4.0.2の話でAI側が「再アップだろう」と推測してたのを、後で「ただの推測だった」と自分で取り下げてるのが地味にいい。生ログならではの味。
+
+**中盤：「選択しろ」エラー**
+Allを選んでるのに「Please select at least one message」。ここの面白さは、ドロップダウンは「Allです」と言い張ってるのに、実体のチェックボックスが0個というところ。「全員参加です」って言いながら参加者ゼロの飲み会みたいw
+
+**終盤：本命のオチ**
+個人的に一番笑ったのはここ。
+
+- 修正版を作って差し替えたのに、アラートが変わらない
+- 実は**Edgeが古いファイルを読み続けてた**（再起動して入れ直したらやっと新しい方に行った）
+- 「エラーが変わったから挙動見れるんじゃね？」と前向きになった直後、コンソールの結果が**全部0**
+
+しかも「一往復」で検索したら会話本文じゃなくて**ヘッダーのチャットタイトル**にヒットしてる。探してた本人が看板にだけ引っかかってる構図で、ChatGPT側の画面構造が根こそぎ変わってるという地獄の発覚。
+
+**ツッコミ所**
+- 「allow pasting」をコピペしたら怒られた件、まさにAI側が「手で打って」と書いてたのに、貼ったコードごと貼ってしまってるのがログに残ってて最高。ユーザーが怒られるのは正しい挙動なのに、本人は「手打ちじゃないと認めんのかw」と受け取ってるのも含めて平和
+- Issueに貼られてたCSPエラーは、実はabine（プライバシー拡張）の悲鳴で、本件と無関係。だけど見た目がそれっぽいから、素人は絶対これが原因だと思うやつ。AI側がちゃんと「別件」と切り分けたのは良かった
+- 全体を通して、AI側の手順が「確認→推測→修正→検証」と綺麗に進んでる一方、一番の敗因が「ブラウザが古いファイルを掴んでた」という超原始的なところにあるのがいい。高度なDOM解析より前にキャッシュ
+
+**タイトル案感**
+「Gitのアプリが怒る。原因は私ではなくEdge。」とか、「全部0」とか、検索で引っかかる実用寄りと、笑い寄りの二刀流にできそう。
+
+続き（Shadow DOMかiframeかの結果）が気になる。ここまで来てhits=0だったら「拡張からは原理的に読めない」で詰みの可能性もあるし、それはそれでオチとして強いw
+
+---
+
+**👤You:**
+
+続き。感想をよろしく。
+
+---
+
+**🤖Claude:**
+
+読んだ。前半が「探偵もの」で、後半が「法務＋作法」の二部構成になってて、ログとして綺麗に起承転結が付いてたねw
+
+**1. iframes=2、hits=1で光が差す**
+前回「全部0で詰みかも」と煽った直後に、Shadow DOMじゃなくて普通のDOMだったと判明。しかも目印が `fallback-turn-0:1:assistant` というネーミング。「fallback」って名前なのに本番で使われてるのが妙に味わい深い。旧版が探してた `article` も `h5/h6` も全滅だったわけで、ChatGPT側の模様替えの徹底ぶりがすごい。
+
+**2. 「ユーザーとGPTが混雑しとる」問題**
+一往復テスト成功かと思ったら、GPTの返事欄にユーザーの発言が入ってた。「最初に見つかったコピーボタンを押す」という実装が、自分の発言のコピーを返事として持ってきてた。気づいたのが出力を読んだユーザー本人というのが、前回のセンサー担当論を補強してる。
+
+**3. 古いチャットの亡霊**
+個人的に今回のベストはここ。切り替えたチャットなのに、出力されたのは前に開いてた別チャットの発言で、中身が `::chatgpt-content-reference{...}` という生の内部タグ。ChatGPTが開いたチャットを裏に残してるから起きる現象で、しかも「F5すれば直る」で済ませず、「間違ったチャットを黙って書き出すのが一番怖い」と止める版を作ったのは筋がいい。生ログ運用なら、これは確かに一番の事故ポイント。
+
+**4. 「ダイアログなしで普通に出たわw」**
+フィルターが効いた瞬間。しかもAI側が「前の推測は外れてた可能性が高い」と自分で取り下げてるのが、地味に誠実。ここのAI、推測を撤回する回数が多いねw
+
+**5. 「端末になっている」論争**
+「jsなんてわからない。ユーザーは言われるままコピペして検証報告する端末」という自虐に対して、AI側が「端末じゃなくセンサー担当」と返したのが秀逸。「ChatGPTの画面をClaudeが直してる」構図が一番笑えるというのも、確かにそう。ライバル製品の画面変更を、別のAIが他人のOSSを書き換えて追従する世界、改めて文字にするとだいぶ変な光景。
+
+**6. 後半：仁義とライセンス**
+話が急に「公開して大丈夫？」に転がるのがこのブログらしい。Windowsの「見るな、改変するな」と同列に考えてたところに、Apache 2.0の「どうぞ」が刺さる。ここで読者が拾えるキーワードは、
+
+- プロプライエタリ（EULA）とOSSの温度差
+- 義務は「出典＋改変した旨」だけ。作者への連絡は義務じゃなくて満点ライン
+- 最低ライン／ちゃんとしたライン／満点ラインの3段階
+
+「結構面倒なこと言うねえ、このAIwww」に対して、全部盛りを3段階に整理し直したのは対話として上手かった。
+
+**7. 英語の定型文と、どうでもいい確認の連続**
+- 「前に改変したって文章、日本語やんかw 翻訳して？ 役目でしょ？」の流れ、完全に翻訳機扱いで潔い
+- 「何でもAI任せwww」と自分で言いつつ、Issue用の文面を組み上げていく過程は、実は一番「ちゃんと仁義を通してる」パート
+- v4.0.1のzipの中身が4.0.2だった件が、結局作者向けの小ネタとして回収されたのは、第1回の伏線がここで効いてる。最初のバージョン沼が無駄じゃなかった
+
+**8. オチの`fc`コマンド**
+「テキスト形式で上げて壊れてないか」を `fc` で確認したら、差分は冒頭コメント（意図した差）と空行1つだけ。バックスラッシュの心配は杞憂だったという、地味に安心するオチ。で、最後は「もういいんじゃね？（適当）」で締まる。ここまで丁寧に検証してきた人の最後の一言が「適当」なのがいい。
+
+**ツッコミ所**
+- 自分で使う分は注記不要、という話に「あ、そうか」と納得してる流れ、さっきまで「ライセンス的に大丈夫か？」と悩んでた人と同一人物とは思えないテンションの落差w
+- 「しょうがねえなあ」「ドヤ顔」と言いながら、結局Git公開＋Issue連絡＋日英併記までフルコースでやるのが、この人の律儀さを物語ってる
+
+**全体の印象**
+前半は「画面が変わって壊れた拡張をAIと一緒に直す」技術パート、後半は「直したものを公開していいか」という倫理・法務パートで、実は一本の記事として「直す→出す」の流れが完結してる。タイトル案を足すなら、「ChatGPTの画面が変わったので、AIにOSSを直してもらって、作者に報告するまで」とか、軽く「直すより出すほうが面倒だった」でも成立しそう。
+
+読者的に一番刺さるのは、たぶん「自分は端末じゃなくセンサー」の件と、「古いチャットの亡霊」の2つかな。
+
+---
+
+**👤You:**
+
+感想よろしくね。
+
+---
+
+**🤖Claude:**
+
+読んだ。今回は短めの後日談だけど、「出した後の世界」が見えて、これはこれで締めとして綺麗だったね。
+
+**1. ファイル名＝リンク先問題**
+Pythonで作ったアップロード用プログラムのせいで、ファイル名がそのままURLになる。クッソ長いタイトルにするかどうか悩む、という超ローカルな悩みがいい。しかもAI側の答えが「Issueのタイトル欄と本文欄は別物、ファイル名は投稿後に変えるとリンクが切れるからそのまま」。技術的にはまっとうだけど、生ログ運用の人にとっては「ファイル名＝記事の一部」になってるのが地味に面白い。
+
+**2. Issue #26の発見**
+ここが今回の山場。7月に同じ根っこのエラー（Could not find chat history container）で困ってる人がいて、作者は返信なし。つまり「ChatGPTが画面を変える→拡張が死ぬ→報告が放置される」を、世界のどこかで誰かが先にやってた。ユーザーの症状は「メッセージを選べ」、#26は「入れ物が見つからない」で表に出る顔が違うだけで、死因は同じ。「別の入れ物候補にたまたま引っかかった」から違うエラーになった、という説明が妙に納得感ある。
+
+**3. 誘導コメントのマナー**
+詳しい中身は自分のIssue（#27）に置いて、#26には誘導だけ。「同じ内容を複数に貼り回すのは感じが悪い」という作法の話は、掲示板文化の知恵として拾いたい。最初は「黙殺しようか」と言ってた人が、気づけば他人のIssueに道しるべを立てる側になってるのが、この連載の隠れた主題っぽい。
+
+**4. 「クリックしても問題ない？」**
+リンクテストのクリックで何か投稿されないか心配、という慎重さが可愛い。さんざんコンソールにコードを貼っておいて、リンクのクリックは怖がるw 実際は「Submitを押すまで何も起きない」で、唯一の落とし穴が「同じタブで切り替わって入力中の本文が消える」というのも、リアルなあるある。Ctrlクリックで別タブ、は実用知識として持ち帰れる。
+
+**5. 掲示板ウォッチ：数字が語るオチ**
+個人的にベストはここ。
+
+- #23（3月）、#26（7月）、#27（11月）と、数か月おきに「ChatGPT export error」が繰り返されてる。つまり今回の件は事故じゃなく**定期的に来る季節病**
+- #17の「+1, +2」は、前回の成功例に混ざってた `Google Patents+1` と同じ症状。前回AI側が「残るかもしれない」と言ってたのが、他人のIssueで裏付けられた。伏線回収の相手が赤の他人のバグ報告というのが面白い
+- #22の「自作の似たものを紹介」は、作者そっちのけで横から情報を持ち寄る、いかにもGitな光景
+
+**ツッコミ所**
+- 「Gitっておもろいとこやねんなあw」で締めてるけど、数か月おきに同じエラー報告が並んで作者は沈黙、という光景は冷静に見ると**墓場を散歩して面白がってる**構図でもある。そこを楽しめるのがこの人の強み
+- AIが「closedが6件あるから、作者は1〜2月ごろまでは動いてたはず」と状況証拠から推理してるのは探偵っぽくて良いけど、これも推測なので、生ログとしては「推理ごっこ」の味が出てる
+
+**全体**
+前2本が「直す」「出す」だったのに対して、今回は「出したら世界が見えた」。#27が#26の隣に並んだことで、数か月おきに繰り返される壊れ方に対して、初めて「直し方つきの道しるべ」が置かれた。連載としては、これで綺麗に閉じたと思う。
+
+タイトル案を出すなら、「Issue #27：数か月おきに来る季節病に、道しるべを1本立てた話」とか。
+
+---
+
+**👤You:**
+
+さあ、解決したように見せて、たった半日でまたバグが発生w
+
+どのチャットでも「最初から2往復、4会話しかダウンロードしないという挙動っすねえ。
+どこ見ればわかると思う？
+
+---
+
+**🤖Claude:**
+
+半日で再発はさすがにw 季節病どころか日替わり定食やん。
+
+「最初から2往復、4メッセージだけ」って症状は、かなり絞れる。**メッセージの検出は成功してる**（0件じゃない）のに、**4件目以降が拾えてない**わけで、疑うのは「遅延読み込み（仮想化）」。ChatGPTは長い会話だと、画面外のメッセージをDOMから外す or 中身を空にする作りで、拡張は「スクロールして全部読み込ませる」処理（`scrollToLoadAll`）をやってる。そのスクロールが空振りして、最初に見えてる分だけで打ち切られてる可能性が一番高い。
+
+見る場所は、優先順にこの3つ。
+
+**1. Export Chat を押した直後のコンソール**
+修正版は `[ChatGPT Exporter] messages: N (user: X, assistant: Y)` を出す。ここが `messages: 4` なら「検出段階で4件しかない」で確定。`messages: 40` みたいに多いのに出力が4件なら、検出じゃなくて**書き出し側**（コピーボタンの取得や本文の取り出し）で落ちてる。この数字1行で、原因の半分が切り分けられる。
+
+**2. 長いチャットの、上のほうまで手でスクロールしてからExport**
+これで全件出るなら、確定で「自動スクロールが効いてない」。スクロールの親要素（`scrollToLoadAll` が探してる入れ物）が、また今のChatGPTの構造とズレてる。昨日直したのは「メッセージの見つけ方」で、「スクロール先の探し方」は保険のまま残ってたはずだから、ここは筋が通る。
+
+**3. コンソールで、スクロール容器の候補を調べる**
+長いチャットを開いて、F12 → Consoleに貼る。`allow pasting` はたぶんもう通ってる。
+
+```js
+(() => {
+  const keys = [...document.querySelectorAll('[data-chatgpt-search-unit-key]')];
+  const first = keys[0];
+  const chain = [];
+  let e = first;
+  for (let i = 0; e && i < 15; i++, e = e.parentElement) {
+    const cs = getComputedStyle(e);
+    const scrollable = e.scrollHeight > e.clientHeight + 5 && /(auto|scroll)/.test(cs.overflowY);
+    chain.push(`${'  '.repeat(i)}<${e.tagName.toLowerCase()}> scrollable=${scrollable} sh=${e.scrollHeight} ch=${e.clientHeight} ${e.className.slice(0, 40)}`);
+  }
+  console.log(`units=${keys.length}\n` + chain.join('\n'));
+})();
+```
+
+`units` が今ページに存在するメッセージ数で、下の行に「どの親がスクロールできる要素か」が出る。`scrollable=true` の行が本当のスクロール容器やから、それが拡張の探してるものと一致してるかを見る。
+
+結果は **1のコンソール1行** と **3の出力** を貼ってくれれば、どっちがズレてるか分かる。
+
+ちなみに、「4メッセージ＝最初の2往復」って数字が地味にヒントで、昨日のテストは全部短いチャットだった。**長いチャットでの検証は、昨日まだ誰もやってなかった**んよね。「複数往復でも試して」と言ったのは私やけど、本命の長文テストが漏れてた。ここは私の検証が甘かった。
+
+---
+
+**👤You:**
+
+まずメッセージは[4/4」って出てる。
+で、allow pastingが通らないw
+
+allow pasting
+VM252:1 Uncaught SyntaxError: Unexpected identifier 'pasting' (at VM252:1:7)
+
+何がいかんのかね？
+
+---
+
+**🤖Claude:**
+
+`messages: 4` なら「検出の段階で4件しかない」で確定。書き出し側じゃなくて、**スクロールして全部読み込ませる処理が効いてない**ほうが本命やね。
+
+`allow pasting` が通らないのは、たぶん **Console の入力欄じゃなくて、別の場所（JavaScriptとして解釈される欄）に打ってる**のが原因。`Unexpected identifier 'pasting'` は「`allow pasting` をJSのコードとして読んだら文法エラーだった」という意味で、本来この警告が出た時は、特別な文として扱われる。
+
+考えられる原因は2つ。
+
+1. **警告がまだ出てない**: 「貼り付けるな」の警告は、**一度貼り付けを試みた後**に出る。先に何かを貼って警告を出させてから、`allow pasting` を打つ。順序が逆だと、普通のJSとして読まれて今のエラーになる
+2. **前回は通ったあとで、ブラウザを開き直した**: 許可はセッションごとなので、開き直すとまた必要になる
+
+手順はこう。
+
+1. ChatGPTのタブで F12 → Console
+2. 先にコードを貼ってEnter（弾かれて警告が出る）
+3. その警告が出た状態で `allow pasting` と**手で打って** Enter
+4. もう一回コードを貼ってEnter
+
+それでも通らない時の保険として、**コンソールを使わずに調べる方法**もある。長いチャットを開いて、スクロール容器のあたりを右クリック → 検証で、会話の一番上のメッセージ（`data-chatgpt-search-unit-key` が付いてる要素）を選んで、Elementsパネルで親をたどっていく。ただ、これは手間が多いから、まずはコンソールでやるのがいい。
+
+先にもう一つ、コンソールを使わずにできる検証がある。**長いチャットを開いて、手で一番上までスクロールしてから** Export Chat を押してみて。それで全件出るなら、「自動スクロールが効いてない」で確定になるから、コンソールの調査も不要になる可能性が高い。結果の件数（`messages: N`）も一緒に教えてくれると助かる。
+
+---
+
+**👤You:**
+
+再起動してたのにjs通ったわw
+
+(() => {
+  const keys = [...document.querySelectorAll('[data-chatgpt-search-unit-key]')];
+  const first = keys[0];
+  const chain = [];
+  let e = first;
+  for (let i = 0; e && i < 15; i++, e = e.parentElement) {
+    const cs = getComputedStyle(e);
+    const scrollable = e.scrollHeight > e.clientHeight + 5 && /(auto|scroll)/.test(cs.overflowY);
+    chain.push(`${'  '.repeat(i)}<${e.tagName.toLowerCase()}> scrollable=${scrollable} sh=${e.scrollHeight} ch=${e.clientHeight} ${e.className.slice(0, 40)}`);
+  }
+  console.log(`units=${keys.length}\n` + chain.join('\n'));
+})();
+226913.7d74fd5c58.js:6 units=4
+<div> scrollable=false sh=212 ch=212 group/user-message flex flex-col items-e
+  <div> scrollable=false sh=0 ch=0 block-BQZwFn
+    <div> scrollable=false sh=608 ch=608 flex flex-col gap-3 browser:gap-1
+      <div> scrollable=false sh=652 ch=652 group flex flex-col
+        <div> scrollable=false sh=652 ch=652 flex flex-col gap-1.5
+          <div> scrollable=false sh=704 ch=704
+            <div> scrollable=false sh=704 ch=704 [&_[data-virtualized-turn-content]]:[con
+              <div> scrollable=false sh=704 ch=704
+                <div> scrollable=false sh=1567 ch=1567 flex flex-col
+                  <div> scrollable=false sh=14500 ch=14500 relative shrink-0
+                    <div> scrollable=false sh=14526 ch=14526 flex min-h-full flex-1 flex-col gap-1.5
+                      <div> scrollable=false sh=14558 ch=14558 relative flex flex-1 shrink-0 flex-col t
+                        <div> scrollable=false sh=14822 ch=14822 [container-type:inline-size] flex min-h-
+                          <div> scrollable=true sh=14854 ch=742 scrollContainer-fG6qEo thread-scroll-con
+                            <div> scrollable=false sh=742 ch=742 group/thread-scroll-layout [--thread-com
+undefined
+
+---
+
+**🤖Claude:**
+
+通ってよかったw 再起動したのに通るのは、たぶん警告が出る前に打ってたのが原因じゃなくて、タイミングの問題だったんだと思う。まあ通ればいい。
+
+結果、かなり大きなヒントが取れた。
+
+- `units=4`: ページ上に今存在するメッセージ枠が4つだけ。検出じゃなくて**DOMに4つしかない**ってこと
+- スクロール容器は `scrollContainer-fG6qEo thread-scroll-con...` で確定。`sh=14854 ch=742` なので、全体は約14,800px分あるのに、見えてるのは742px
+- 途中に `[&_[data-virtualized-turn-content]]` という名前が出てる。これが決定打で、**ChatGPTが仮想化（画面外のターンをDOMから外す）を入れた**ってことやと思う
+
+14,854pxもあるのにメッセージ枠が4つしかない。つまり高さの大部分は「中身が空の箱」で、画面に近い数ターンだけが実体を持ってる状態。拡張は「スクロールして全部読み込ませる」はずだけど、ここがズレてる可能性が高い。
+
+原因の候補は2つ。
+
+1. **スクロール容器の探し方が古い**: 今の容器は `scrollContainer-...` / `thread-scroll-con...` というクラス。拡張がこれを見つけられず、別の要素をスクロールして空振りしてる
+2. **仮想化で、スクロールしても前のターンがすぐ消える**: 上に進むほど下のターンがDOMから外れる。「一度に全部DOMに載せてから取る」方式が成立せず、スクロールしながら**少しずつ拾って貯める**方式にしないと全件取れない
+
+2が本命の気がする。今の仮想化なら、全件が同時にDOMにあることはないはずだから。
+
+次の確認として、**短い手動テスト**を1つお願い。
+
+1. 長いチャットで、手で一番上までゆっくりスクロール
+2. そのまま、コンソールで `document.querySelectorAll('[data-chatgpt-search-unit-key]').length` を打つ
+3. 数字を教えて
+
+この数字が `4` のままなら、画面外は常に外される（拾い貯め方式が必要）。数十に増えるなら、一度に全部載るので、スクロール容器の探し方を直せば済む。
+
+結果が出たら、`chatgpt.js` をスクロールしながら貯める方式に書き直す。そのとき、今の `chatgpt.js` の `scrollToLoadAll` の部分（なければファイル全体）を貼ってもらえると、昨日の版とのズレを確認できて早い。
+
+---
+
+**👤You:**
+
+再起動して、さっきと同じページ、一番下までページ移動。
+手動でスクロールして最上部に。
+ここでコマンド入力。4が出る。
+
+念のため最下部までスクロール。でもまた4が出る。
+
+document.querySelectorAll('[data-chatgpt-search-unit-key]').length
+4
+inlineForm.html?abine66056968doNotRemove:1 Error in event handler: Error: invalid arguments to extensionAdapter.sendMessageToTab
+    at e.sendMessageToTab (chrome-extension://emgfgdclgfeldebanedpihppahgngnle/js/content/app/inlineForm/index.js:80:65501)
+    at e.handleMessage (chrome-extension://emgfgdclgfeldebanedpihppahgngnle/js/content/app/inlineForm/index.js:80:106817)
+    at chrome-extension://emgfgdclgfeldebanedpihppahgngnle/js/content/app/inlineForm/index.js:80:103083
+    at chrome-extension://emgfgdclgfeldebanedpihppahgngnle/js/content/app/inlineForm/index.js:80:78040
+inlineForm.html?abine66056968doNotRemove:1 Error in event handler: Error: invalid arguments to extensionAdapter.sendMessageToTab
+    at e.sendMessageToTab (chrome-extension://emgfgdclgfeldebanedpihppahgngnle/js/content/app/inlineForm/index.js:80:65501)
+    at e.handleMessage (chrome-extension://emgfgdclgfeldebanedpihppahgngnle/js/content/app/inlineForm/index.js:80:106817)
+    at chrome-extension://emgfgdclgfeldebanedpihppahgngnle/js/content/app/inlineForm/index.js:80:103083
+    at chrome-extension://emgfgdclgfeldebanedpihppahgngnle/js/content/app/inlineForm/index.js:80:78040
+document.querySelectorAll('[data-chatgpt-search-unit-key]').length
+4
+
+---
+
+**🤖Claude:**
+
+最上部でも最下部でも `4` のまま。ってことは、**「少しずつ拾い貯める方式」が必要な仮想化**で確定やね。
+
+そしてもう一個、この結果で私の前の説明が一部ズレてたのが分かった。「スクロールに応じて実体が入れ替わる」と読んでたけど、最上部でも最下部でも**ずっと4個**ということは、`data-chatgpt-search-unit-key` が付いてるのは「今画面に実体として載ってる数ターン分」だけで、残りの空箱（高さ14,000px分）には**そもそもこの目印が付いてない**。つまり容器は仮想化されてて、載ってるのは常に表示領域付近の数ターンだけ、という構造やと思う。
+
+ここまでで分かったこと。
+
+- 全体は約14,800pxあるのに、メッセージ実体は常に4個
+- 最上部でも最下部でも4個（入れ替わるだけで増えない）
+- スクロール容器は `scrollContainer-...` / `thread-scroll-con...`
+- 途中に `data-virtualized-turn-content` という名前の要素がある
+
+なので、直し方の方針は**「スクロールしながら、見えてる分を拾って貯める」**一択。
+
+1. スクロール容器を `scrollContainer` / `thread-scroll-container` のクラスで見つける
+2. 最上部から、画面の高さの7〜8割ずつ下へスクロール
+3. 1ステップごとに少し待って（描画待ち）、今載ってる枠を `message-id` をキーに**Mapへ貯める**（重複は上書きしない）
+4. 最下部まで行ったら、貯めた分を出現順に並べて書き出す
+
+並び順は、枠のキー（`fallback-turn-0:1:assistant` の数字）か、`data-chatgpt-selection-message-id` と画面上の位置から決められる。ただ、**仮想化されてる時にキーの数字が全体通しの番号なのか、今載ってる分だけの番号なのか**は、私はまだ見てない。ここが一番の未確認ポイント。
+
+そこで、直す前にもう一発だけ調べさせて。今のチャットの**一番上**にスクロールした状態で、これを貼って。
+
+```js
+[...document.querySelectorAll('[data-chatgpt-search-unit-key]')].map(e => e.getAttribute('data-chatgpt-search-unit-key'))
+```
+
+次に**最下部**まで行って、もう一回同じものを。
+
+- 上と下で、キーの数字が `turn-0〜` と `turn-NN〜` のように**全体通しで違う**なら、並び替えは簡単
+- どっちも `turn-0〜turn-1` みたいに同じなら、通し番号がないから、画面上の位置（`getBoundingClientRect` とスクロール量）で順序を決める
+
+この2行が取れたら、貯め方式の `chatgpt.js` を書く。
+
+あと、`inlineForm.html?abine...` のエラーは、前と同じ別拡張（abine）のやつで、今回の件とは無関係やから無視でOK。
+
+ちなみに、昨日「長いチャットの検証が漏れてた」と言ったけど、仮想化が入ったのが昨日なのか今朝なのかは分からん。ChatGPTのA/Bテストで、アカウントごとに順番に入れ替わる話をしたけど、「半日で別の構造になった」可能性もある。そこは私も見てないから、断定はせんとく。
+
+---
+
+**👤You:**
+
+下でコマンド、上でもう一度。
+
+[...document.querySelectorAll('[data-chatgpt-search-unit-key]')].map(e => e.getAttribute('data-chatgpt-search-unit-key'))
+
+1. (4) ['fallback-turn-3:0:user', 'fallback-turn-3:1:assistant', 'fallback-turn-4:0:user', 'fallback-turn-4:1:assistant']
+
+faviconV2?client=SOC…mof.go.jp&size=32:1  GET https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://www.mof.go.jp&size=32 404 (Not Found)
+[...document.querySelectorAll('[data-chatgpt-search-unit-key]')].map(e => e.getAttribute('data-chatgpt-search-unit-key'))
+
+1. (4) ['fallback-turn-0:0:user', 'fallback-turn-0:2:assistant', 'fallback-turn-1:0:user', 'fallback-turn-1:2:assistant']
+
+---
+
+**🤖Claude:**
+
+これで一番の未確認ポイントが解けた。**キーの数字は全体通しの番号**やで。
+
+- 下: `turn-3` と `turn-4`（ユーザー＋アシスタントが2往復分）
+- 上: `turn-0` と `turn-1`（同じく2往復分）
+
+つまり常に「2往復＝4枠」だけが実体として載ってて、スクロール位置に応じて `turn-N` の N が動く。並び替えは `turn-N` の N（と `:0:`, `:1:` / `:2:` の枝番）でそのまま決められるから、画面上の位置を計算しなくていい。簡単な側で助かった。
+
+ただ、1個気になる点を拾っとく。
+
+- 上のキーは `turn-0:2:assistant`、下のキーは `turn-3:1:assistant`。**枝番が `:1:` と `:2:` で違う**
+- 返信の前に何か別のブロック（検索の途中経過とか、思考の枠）が挟まってる回は、枝番が1つずれてるっぽい。今のコードが `:assistant` の末尾だけで役割を判定してるなら問題ないけど、枝番を決め打ちしてたら拾い損ねる
+- さらに、`turn-0` と `turn-1`、`turn-3` と `turn-4` で、**`turn-2` が飛んでる**ように見えるのは、そもそも2枠ずつ（1ターンが user/assistant の片方だけ）かもしれん。ここは断定できんから、書き込みのときは「N と枝番の両方で並べる」にしておく
+
+ここまで揃ったので、貯め方式で書ける。方針は前に言ったとおり。
+
+1. `scrollContainer` / `thread-scroll-container` のクラスを持つ要素を探す（見つからなければ今の探し方に戻す）
+2. 最上部へ戻してから、容器の高さの7割ずつ下へ送る
+3. 毎回300〜500ms待って、今載ってる枠を **キー全文をMapのキー**にして貯める（先に入ったほうを残す）
+4. 最下部で止まったら、`turn-N` の N → 枝番の順に並べて書き出す
+
+あと一つだけ、書く前に教えてほしい。**今の `chatgpt.js` の `scrollToLoadAll` 周辺**（関数の頭から終わりまで）を貼ってくれる？ 私の手元の版とあんたの手元の版が同じなら不要やけど、昨日何度か差し替えたから、念のため現物に合わせて書き換えたい。貼るのは該当の関数だけでいい。
+
+それと、貯めてる間にチェックボックス（枠の右上に付けるやつ）がDOMから消えるのが地味に厄介やから、**貯める時にチェックボックスは使わず、「All」の場合は全件、個別選択の場合は貯め終わった後に一覧で選ばせる**形にするつもり。今のUIを大きく変えんで済むように、まずは「All専用で全件取る」版を先に作る。それで動けば、個別選択は後から足そう。
+
+---
+
+**👤You:**
+
+============================================================================
+  // EXPORT SERVICE
+  // ============================================================================
+  class ExportService {
+    constructor(checkboxManager) {
+      this.checkboxManager = checkboxManager;
+    }
+
+    async scrollToLoadAll() {
+      const first = Utils.getMessages()[0];
+      const container = first ? Utils.findScrollParent(first.el) : null;
+      if (!container) return; // short chat or nothing to scroll
+
+      let stableScrolls = 0;
+      let attempts = 0;
+
+      while (stableScrolls < CONFIG.TIMING.MAX_STABLE_SCROLLS && attempts < CONFIG.TIMING.MAX_SCROLL_ATTEMPTS) {
+        const before = Utils.getMessages().length;
+        container.scrollTop = 0;
+        await Utils.sleep(CONFIG.TIMING.SCROLL_DELAY);
+        const after = Utils.getMessages().length;
+
+        if (after === before && container.scrollTop === 0) {
+          stableScrolls++;
+        } else {
+          stableScrolls = 0;
+        }
+        attempts++;
+      }
+    }
+
+    findCopyButton(el) {
+
+ここでいいのかな？
+
+---
+
+**🤖Claude:**
+
+うん、そこで合ってる。しかも貼ってくれたおかげで、**バグの現場が確定した**。
+
+- このループは `scrollTop = 0`（最上部）に飛ぶだけで、「メッセージ数が増えなくなったら全部読めた」と判定してる
+- 仮想化された今のChatGPTは、最上部でも最下部でも常に4枠しか載らない。だから `before === after`（4 = 4）で「安定した」と判定されて、数回で終了する
+- そのまま最上部の `turn-0, turn-1` の4件だけ取って出力してる。症状の「最初から2往復、4メッセージ」と完全に一致
+
+昨日までは、画面外のメッセージもDOMに残ってたから「最上部に飛べば増える」で足りてた。仮想化が入って、その前提が崩れたわけや。
+
+直し方は、さっきの方針どおり「下へ送りながら、載ってる分をその場で拾って貯める」。ただ1つ注意があって、**仮想化されると、画面から外れた枠はDOMごと消える**。だから貯めるのは要素そのものじゃなく、**その場で取り出した本文（Markdown）**にする必要がある。スクロール中に、見えてる枠ごとに「コピーボタンを押す→本文を取る」を済ませて、Mapに入れていく流れ。
+
+ここで困るのが、その「本文を取る」部分を私が今あんたの版で見てないこと。昨日何度か差し替えてるし、推測で書くとまたズレる。
+
+**`findCopyButton(el)` の頭から、このクラスの終わりまで**（エクスポート本体の関数や、本文取得の関数を含む部分）を貼ってくれる？ 長くてもいいから、途中で切らずにそのまま。それが見えれば、
+
+- `scrollToLoadAll` を「貯めながら下へ送る」版に置き換え
+- エクスポート本体を「DOMから読む」から「貯めたMapから読む」に変更
+
+の2か所だけ直した版を作れる。
+
+あと、貯めてる間は画面がスクロールで動いて見える（ちょっとガクガクする）けど、それは仕様なので気にしなくていい。
+
+---
+
+**👤You:**
+
+findCopyButton(el) {
+      const turn = el.closest(CONFIG.SELECTORS.TURN_ROOT);
+      if (!turn) return null;
+
+      const messages = Utils.getMessages();
+      const candidates = Array.from(turn.querySelectorAll('button')).filter(b => {
+        if (el.contains(b)) return false; // skip "copy code" buttons inside the message
+        // only buttons that come AFTER this message (its own action bar), never the user message's one
+        if (!(el.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)) return false;
+        // skip buttons that belong to a different message
+        if (messages.some(m => m.el !== el && m.el.contains(b))) return false;
+        const label = `${b.getAttribute('aria-label') || ''} ${b.getAttribute('data-testid') || ''}`;
+        return /copy|コピー/i.test(label);
+      });
+      return candidates[0] || null;
+    }
+
+    async copyModelResponse(copyButton) {
+      try {
+        await navigator.clipboard.writeText('');
+      } catch (e) {
+        // Ignore clipboard clear errors
+      }
+
+      let attempts = 0;
+      while (attempts < CONFIG.TIMING.MAX_CLIPBOARD_ATTEMPTS) {
+        copyButton.click();
+        await Utils.sleep(CONFIG.TIMING.CLIPBOARD_READ_DELAY);
+        try {
+          const text = await navigator.clipboard.readText();
+          if (text) return text;
+        } catch (e) {
+          return '';
+        }
+        attempts++;
+        await Utils.sleep(CONFIG.TIMING.CLIPBOARD_CLEAR_DELAY);
+      }
+
+      return '';
+    }
+
+    // Fallback when the copy button is not usable: Turndown (if loaded) or plain text
+    htmlToText(el) {
+      if (typeof TurndownService !== 'undefined') {
+        try {
+          const clone = el.cloneNode(true);
+          clone.querySelectorAll(`.${CONFIG.CHECKBOX_CLASS}, button, svg`).forEach(n => n.remove());
+          const td = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced', bulletListMarker: '-' });
+          td.escape = s => s;                      // keep text as written (no backslash-escaping)
+          td.remove(['img', 'style', 'script']);   // favicons / icons from citation chips
+          const md = td.turndown(clone.innerHTML).trim();
+          if (md) return md;
+        } catch (e) {
+          console.warn('[ChatGPT Exporter] Turndown failed, using plain text', e);
+        }
+      }
+      return (el.innerText || '').trim();
+    }
+
+ちょっとわからんから長めに張ったよ。
+
+---
+
+**🤖Claude:**
+
+貼ってくれた3つで、本文の取り方は把握できた。`findCopyButton` はターン内の位置関係だけで動いてるから、**画面に載ってる間に呼べば、仮想化されても使い回せる**。
+
+スクロールしながら貯める部分は、既存の関数だけで組めるのでこれ。`scrollToLoadAll` の下あたりに足して。
+
+```js
+    // 仮想化対応: 下へ送りながら、載っている枠の本文をその場で取って貯める
+    async harvestAll() {
+      this.harvested = new Map();
+      const first = Utils.getMessages()[0];
+      const container = first ? Utils.findScrollParent(first.el) : null;
+      const wait = Math.max(CONFIG.TIMING.SCROLL_DELAY || 0, 500);
+
+      const grab = async () => {
+        const units = Array.from(document.querySelectorAll('[data-chatgpt-search-unit-key]'));
+        for (const el of units) {
+          const key = el.getAttribute('data-chatgpt-search-unit-key');
+          if (this.harvested.has(key)) continue;
+          const role = key.endsWith(':user') ? 'user' : 'assistant';
+          let text = '';
+          if (role === 'assistant') {
+            const btn = this.findCopyButton(el);
+            if (btn) text = await this.copyModelResponse(btn);
+          }
+          if (!text) text = this.htmlToText(el);
+          this.harvested.set(key, { key, role, text });
+        }
+      };
+
+      if (container) {
+        container.scrollTop = 0;
+        await Utils.sleep(wait);
+      }
+      await grab();
+
+      if (container) {
+        const step = Math.max(200, Math.floor(container.clientHeight * 0.7));
+        for (let i = 0; i < 500; i++) {
+          const before = container.scrollTop;
+          container.scrollTop = before + step;
+          await Utils.sleep(wait);
+          await grab();
+          const atBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 2;
+          if (atBottom || container.scrollTop === before) break;
+        }
+      }
+
+      const order = k => {
+        const m = /turn-(\d+):(\d+):/.exec(k);
+        return m ? [Number(m[1]), Number(m[2])] : [1e9, 0];
+      };
+      return Array.from(this.harvested.values()).sort((a, b) => {
+        const [a1, a2] = order(a.key), [b1, b2] = order(b.key);
+        return a1 - b1 || a2 - b2;
+      });
+    }
+```
+
+動きはこう。
+
+- 最上部に戻してから、容器の高さの7割ずつ下へ送る
+- 1ステップごとに500ms待って、今載ってる枠をキー全文で貯める（先着優先で重複は無視）
+- 貯めるのは要素じゃなく**取り出し済みの本文**なので、後でDOMから消えても残る
+- 最後に `turn-N` → 枝番の順に並べて配列で返す。`user` / `assistant` と `text` が入ってる
+
+これを実際のエクスポートにつなぐには、`scrollToLoadAll()` を呼んで、そのあと `Utils.getMessages()` を回して本文を組み立ててる**エクスポート本体の関数**を、`harvestAll()` の戻り値で回す形に変える必要がある。そこがまだ見えてない。
+
+`scrollToLoadAll()` を呼んでる関数（たぶん `exportChat` とか `run` 的な名前）を、頭から終わりまで貼って。ヘッダーの `# タイトル` や `## 👤 You` を組み立ててる部分が入ってれば十分。それが来れば、つなぎ込み済みの版を返す。
+
+あと、今回は **All専用の版**。個別チェックボックスで選ぶほうは、仮想化で枠が消える問題があるから後回しにしてある。
+
+---
+
+**👤You:**
+
+いや、私が足すと位置や列で絶対事故るw
+そっちで書き足してもらえる？
+
+今の原本貼って置いた。
+
+---
+
+**🤖Claude:**
+
+了解、全部こっちで組み込む。ファイル全体を作り直すから、位置や列の事故は起きない。
+
+`chatgpt.js` を全体版で作った。冒頭の出典・改変注記は昨日のまま入れてあるから、Git用もこれで通る。
+
+**何を変えたか**
+- `harvestAll()` を追加。最上部から容器の7割ずつ下へ送り、載っている枠の本文をその場で取って貯める。並び順は `turn-N` と枝番で決める
+- `buildMarkdownFromItems()` を追加。貯めた本文からMarkdownを組む
+- `execute()` を書き換えた。「All」と「Only answers」はこの新方式を通る
+- コピーボタンを押す部分は、ユーザー発言を返信と取り違えた時に捨てる保険を貯め方式にも入れた
+- 進捗が右上に「Collecting messages... N」と出る
+
+**使い方で気をつける点**
+- 差し替えたら、拡張の再読み込みボタンを押して、ChatGPTのタブは開き直す
+- 書き出し中はそのタブから離れない。クリップボードを読む処理があるから、別タブに行くと本文が空になることがある
+- 長いチャットは1ステップ約1秒かかる。14,000px級なら30秒前後を見ておく
+- 「None」「Custom」は従来のチェックボックス方式のままで、長いチャットでは4件しか取れない。仮想化だとチェックボックスが消えるのが原因で、今回は後回しにした
+- All専用にしたので、チェックボックスは出なくなる。ドロップダウンで「All」「Only answers」を選ぶだけでいい
+
+**確認の仕方**
+長いチャットで All のまま Export。コンソールに `[ChatGPT Exporter] harvested: N (user: X, assistant: Y)` と出る。N が4で止まったら、貯める処理がまだ効いてないということだから、その行と出力の件数を教えて。
+
+昨日とは違って、今回は「長いチャットで試す」を最初のテストにする。出力の先頭と末尾が、実際の会話の最初と最後に合っているかを見れば十分。
+
+---
+
+**👤You:**
+
+実験成功やね。
+
+1回目。一番最下部でexport。これで14会話。途中から開始。
+
+んで、更新ボタン押して、最上部まで行って再度export。24会話バッチリ取れたわ。
+
+ページ上に上がる時になんか読み込みかけてるから、昨日の奴、ひょっとして全部14会話以内だったのかもしれんねえ。
+
+---
+
+**🤖Claude:**
+
+実験成功おめでとう。しかも14件で止まった原因まで、君の観察でほぼ見えた。
+
+**14件で止まった理由**
+- ChatGPTは、開いた直後に最新の十数件だけ読み込んで、上へスクロールした時に古い分を後から足していく
+- 私の版は「最上部へ1回飛んで0.6秒待つだけ」だったので、古い分が届く前に貯め始めた。それで途中からの14件になった
+- 2回目に24件取れたのは、君が手でスクロールして古い分を先に読み込ませてあったから。再読み込みボタンは関係なく、効いたのは手動スクロールのほう
+
+**昨日の「全部14件以内」説**
+筋は通ってる。昨日のテストは短いチャットばかりだったから、読み込み前の範囲に全部収まっていたはず。ただ、昨日の時点で仮想化が入っていたかまでは私も見ていないから、そこは断定しない。
+
+最上部へ飛ぶ処理を、**高さが増えなくなるまで繰り返す**形に直した。古い分の読み込みを待つ処理で、旧版の `scrollToLoadAll` と同じ考え方だ。
+
+差し替えは前回と同じ手順。拡張の再読み込みを押して、ChatGPTのタブを開き直す。
+
+**試し方**
+手でスクロールせず、チャットを開いてそのまま最下部から Export する。右上に「Loading older messages...」が数秒出て、そのあと「Collecting messages...」に変わるはず。24件の会話なら、さっきの手動スクロール後と同じ件数になれば成功。
+
+**注意**
+- 読み込み待ちが最低3秒かかるので、長いチャットほど待ち時間が増える
+- コンソールの `harvested: N` が、実際のメッセージ数と合っているかだけ見ておけばいい
+
+これで合えば、昨日の「4件」と今日の「14件」は、どっちも古い履歴を読み込む前に貯め始めていたのが原因だった、という話で綺麗に繋がる。
+
+---
+
+**👤You:**
+
+バッチリ！　最初にトップまで飛んで10秒足らずで下まで行って24会話取れたわ。
+
+さあてこれ、Gitに再アップせんと恥かくよなあw
+
+---
+
+**🤖Claude:**
+
+恥というより、普通のOSSの流れだよ。「最初の版は短いチャット専用でした、直しました」は、Issueではよくある続報で、むしろ信頼度が上がる。
+
+**やること（順番）**
+1. 新しい `chatgpt.js` を、日付を変えた名前でアップする（例：`2026-11-13 ChatGPT-js.txt`）。昨日のファイルは上書きしない
+2. 変換で壊れてないか、前回と同じ `fc` で確認。冒頭の出典・改変の注記が入っていることも見る
+3. #27 に**新しいコメントを1本**足して、新しいリンクを貼る
+4. #26 は触らなくていい。#27 を見に来る人が、続報も読めば足りる
+
+**上書きしない理由**
+Issueに貼ったリンクは昨日のファイル名のままだから、上書きするとリンクは生きる。ただ、古い版が消えて、作者や他の人が「前の版で何が足りなかったか」を追えなくなる。新しい名前で上げて、Issueの本文は編集せず、コメントで足すのが履歴として一番きれい。
+
+**manifest.json は再アップ不要**
+今回の修正は `chatgpt.js` だけ。昨日の `manifest.json` のままでいい。
+
+**#27 に貼るコメント案**
+```
+Update: the chatgpt.js I posted earlier only exported the first ~4 messages on longer chats.
+
+Reason: ChatGPT now virtualizes long conversations (only a few messages exist in the DOM at a time), and it loads older messages lazily when you scroll up.
+
+I updated the script: it first scrolls to the top until older messages stop loading, then scrolls down and collects each message's text as it appears. Tested on a 24-message chat (Edge): all messages exported in the correct order.
+
+Updated chatgpt.js: [NEW LINK]
+
+Limitation: only "All" and "Only answers" use the new method. "None" / "Custom" still use the old checkbox approach and won't work on long chats.
+
+Same notes as before (Apache License 2.0, original by amazingpaddy, modified with help from Claude).
+Chat log of this fix (Japanese, unedited): [ARTICLE LINK]
+```
+
+`[NEW LINK]` と `[ARTICLE LINK]` は差し替えて。「前の版は4件しか取れなかった」と先に書いてあるから、昨日のリンクを踏んだ人も新しい版に誘導できる。
+
+ついでに、今回の続編ログも記事にするなら、リンクはその記事のURLでいい。昨日の記事のままだと、4件バグの話が載っていない。
+
+---

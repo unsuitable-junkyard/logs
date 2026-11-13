@@ -1,0 +1,824 @@
+/**
+ * ChatGPT Chat Exporter - Content script
+ *
+ * Original work: amazingpaddy/ai-chat-exporter (Apache License 2.0)
+ * https://github.com/amazingpaddy/ai-chat-exporter
+ *
+ * MODIFIED by unsuitable-junkyard (with help from Claude, an AI assistant):
+ * rewritten in November 2026 to work with the current ChatGPT page structure.
+ * - Messages are found through [data-content-search-unit-key] /
+ *   [data-chatgpt-search-unit-key] (e.g. "fallback-turn-0:1:assistant").
+ * - ChatGPT now virtualizes long chats (only ~4 messages exist in the DOM at a time),
+ *   so "All" / "Only answers" scroll down step by step and harvest each message as it appears.
+ */
+
+(function() {
+  'use strict';
+
+  // ============================================================================
+  // CONSTANTS
+  // ============================================================================
+  const CONFIG = {
+    BUTTON_ID: 'chatgpt-export-btn',
+    DROPDOWN_ID: 'chatgpt-export-dropdown',
+    FILENAME_INPUT_ID: 'chatgpt-filename-input',
+    SELECT_DROPDOWN_ID: 'chatgpt-select-dropdown',
+    CHECKBOX_CLASS: 'chatgpt-export-checkbox',
+    EXPORT_MODE_NAME: 'chatgpt-export-mode',
+
+    SELECTORS: {
+      MESSAGE_UNIT: '[data-content-search-unit-key], [data-chatgpt-search-unit-key], [data-message-author-role]',
+      TURN_ROOT: '[data-talvt-turn-state]',
+      THREAD_TITLE: 'main h1'
+    },
+
+    TIMING: {
+      SCROLL_DELAY: 2000,
+      HARVEST_DELAY: 600,
+      MAX_HARVEST_STEPS: 800,
+      MAX_SCROLL_ATTEMPTS: 60,
+      MAX_STABLE_SCROLLS: 3,
+      CLIPBOARD_CLEAR_DELAY: 150,
+      CLIPBOARD_READ_DELAY: 300,
+      MAX_CLIPBOARD_ATTEMPTS: 6,
+      POPUP_DURATION: 1000
+    },
+
+    STYLES: {
+      BUTTON_PRIMARY: '#1a73e8',
+      BUTTON_HOVER: '#1765c1',
+      DARK_BG: '#111',
+      DARK_TEXT: '#fff',
+      DARK_BORDER: '#444',
+      LIGHT_BG: '#fff',
+      LIGHT_TEXT: '#222',
+      LIGHT_BORDER: '#ccc'
+    }
+  };
+
+  // ============================================================================
+  // UTILITIES
+  // ============================================================================
+  const Utils = {
+    sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    },
+
+    isDarkMode() {
+      return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
+    },
+
+    sanitizeFilename(text) {
+      return text
+        .replace(/[\\/:*?"<>|.]/g, '')
+        .replace(/\s+/g, '_')
+        .replace(/^_+|_+$/g, '');
+    },
+
+    getDateString() {
+      const d = new Date();
+      const pad = n => n.toString().padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+    },
+
+    createNotification(message, duration) {
+      const popup = document.createElement('div');
+      Object.assign(popup.style, {
+        position: 'fixed',
+        top: '24px',
+        right: '24px',
+        zIndex: '99999',
+        background: '#333',
+        color: '#fff',
+        padding: '9px 16px',
+        borderRadius: '6px',
+        fontSize: '0.95em',
+        boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
+        pointerEvents: 'none'
+      });
+      popup.textContent = message;
+      document.body.appendChild(popup);
+      setTimeout(() => popup.remove(), duration || CONFIG.TIMING.POPUP_DURATION);
+      return popup;
+    },
+
+    // 'user' | 'model' | null
+    getRole(el) {
+      const authorRole = el.getAttribute('data-message-author-role');
+      if (authorRole === 'user') return 'user';
+      if (authorRole === 'assistant') return 'model';
+
+      const key = el.getAttribute('data-content-search-unit-key')
+        || el.getAttribute('data-chatgpt-search-unit-key')
+        || '';
+      if (/assistant/i.test(key)) return 'model';
+      if (/user/i.test(key)) return 'user';
+      return null;
+    },
+
+    getUnitKey(el) {
+      return el.getAttribute('data-content-search-unit-key')
+        || el.getAttribute('data-chatgpt-search-unit-key')
+        || '';
+    },
+
+    includeAll: false, // set temporarily when the user accepts exporting possibly-stale data
+
+    getUrlConversationId() {
+      const m = location.pathname.match(/\/c\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
+      return m ? m[1].toLowerCase() : null;
+    },
+
+    getConversationIdOf(el) {
+      const attr = 'data-chatgpt-selection-conversation-id';
+      const own = el.closest(`[${attr}]`) || el.querySelector(`[${attr}]`);
+      if (own) return own.getAttribute(attr).toLowerCase();
+      const page = el.closest('main');
+      const inPage = page?.querySelector(`[${attr}]`);
+      return inPage ? inPage.getAttribute(attr).toLowerCase() : null;
+    },
+
+    // All messages in display order: [{ el, role }]
+    // By default only the chat that is open now (ChatGPT keeps previously opened chats in the DOM).
+    getMessages(opts = {}) {
+      const withRole = Array.from(document.querySelectorAll(CONFIG.SELECTORS.MESSAGE_UNIT))
+        .filter(el => !el.classList.contains(CONFIG.CHECKBOX_CLASS))
+        .map(el => ({ el, role: this.getRole(el) }))
+        .filter(m => m.role);
+
+      // keep only the outermost element when units are nested
+      const list = withRole.filter(m => !withRole.some(o => o !== m && o.el.contains(m.el)));
+      if (opts.all || this.includeAll) return list;
+
+      const current = this.getUrlConversationId();
+      if (!current) return list;
+      return list.filter(m => {
+        const id = this.getConversationIdOf(m.el);
+        return !id || id === current;
+      });
+    },
+
+    findScrollParent(start) {
+      let e = start?.parentElement;
+      while (e && e !== document.body && e !== document.documentElement) {
+        const oy = getComputedStyle(e).overflowY;
+        if ((oy === 'auto' || oy === 'scroll') && e.scrollHeight > e.clientHeight + 1) return e;
+        e = e.parentElement;
+      }
+      const root = document.scrollingElement;
+      if (root && root.scrollHeight > root.clientHeight + 1) return root;
+      return null;
+    },
+
+    getOwnCheckbox(el) {
+      return el.querySelector(`.${CONFIG.CHECKBOX_CLASS}`);
+    }
+  };
+
+  // ============================================================================
+  // CHECKBOX MANAGER
+  // ============================================================================
+  class CheckboxManager {
+    create(el, role) {
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.className = `${CONFIG.CHECKBOX_CLASS} ${role}`;
+      checkbox.checked = true;
+      checkbox.title = `Include this ${role === 'user' ? 'user' : 'ChatGPT'} message`;
+
+      Object.assign(checkbox.style, {
+        position: 'absolute',
+        right: '4px',
+        top: '4px',
+        zIndex: '10000',
+        transform: 'scale(1.2)',
+        cursor: 'pointer'
+      });
+
+      if (getComputedStyle(el).position === 'static') {
+        el.style.position = 'relative';
+      }
+
+      el.appendChild(checkbox);
+      return checkbox;
+    }
+
+    injectCheckboxes() {
+      const messages = Utils.getMessages();
+      let userCount = 0;
+      let modelCount = 0;
+
+      messages.forEach(({ el, role }) => {
+        if (role === 'user') userCount++; else modelCount++;
+        if (!Utils.getOwnCheckbox(el)) {
+          this.create(el, role);
+        }
+      });
+
+      console.log(`[ChatGPT Exporter] messages: ${messages.length} (user: ${userCount}, assistant: ${modelCount})`);
+    }
+
+    removeAll() {
+      document.querySelectorAll(`.${CONFIG.CHECKBOX_CLASS}`).forEach(cb => cb.remove());
+    }
+
+    anyChecked() {
+      return Array.from(document.querySelectorAll(`.${CONFIG.CHECKBOX_CLASS}`)).some(cb => cb.checked);
+    }
+  }
+
+  // ============================================================================
+  // SELECTION MANAGER
+  // ============================================================================
+  class SelectionManager {
+    constructor() {
+      this.lastSelection = 'all';
+    }
+
+    apply(value) {
+      switch (value) {
+        case 'all':
+          document.querySelectorAll(`.${CONFIG.CHECKBOX_CLASS}`).forEach(cb => cb.checked = true);
+          break;
+        case 'ai':
+          document.querySelectorAll(`.${CONFIG.CHECKBOX_CLASS}.user`).forEach(cb => cb.checked = false);
+          document.querySelectorAll(`.${CONFIG.CHECKBOX_CLASS}.model`).forEach(cb => cb.checked = true);
+          break;
+        case 'none':
+          document.querySelectorAll(`.${CONFIG.CHECKBOX_CLASS}`).forEach(cb => cb.checked = false);
+          break;
+      }
+      this.lastSelection = value;
+    }
+
+    resetDropdown() {
+      const dropdown = document.getElementById(CONFIG.SELECT_DROPDOWN_ID);
+      if (dropdown) {
+        dropdown.value = 'all';
+      }
+      this.lastSelection = 'all';
+    }
+  }
+
+  // ============================================================================
+  // UI BUILDER
+  // ============================================================================
+  class UIBuilder {
+    static getInputStyles() {
+      const isDark = Utils.isDarkMode();
+      return isDark
+        ? `background:${CONFIG.STYLES.DARK_BG};color:${CONFIG.STYLES.DARK_TEXT};border:1px solid ${CONFIG.STYLES.DARK_BORDER};`
+        : `background:${CONFIG.STYLES.LIGHT_BG};color:${CONFIG.STYLES.LIGHT_TEXT};border:1px solid ${CONFIG.STYLES.LIGHT_BORDER};`;
+    }
+
+    static createButton() {
+      const button = document.createElement('button');
+      button.id = CONFIG.BUTTON_ID;
+      button.textContent = 'Export Chat';
+
+      Object.assign(button.style, {
+        position: 'fixed',
+        top: '80px',
+        right: '20px',
+        zIndex: '9999',
+        padding: '8px 16px',
+        background: CONFIG.STYLES.BUTTON_PRIMARY,
+        color: '#fff',
+        border: 'none',
+        borderRadius: '6px',
+        fontSize: '1em',
+        fontWeight: 'bold',
+        cursor: 'pointer',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+        transition: 'background 0.2s'
+      });
+
+      button.addEventListener('mouseenter', () => button.style.background = CONFIG.STYLES.BUTTON_HOVER);
+      button.addEventListener('mouseleave', () => button.style.background = CONFIG.STYLES.BUTTON_PRIMARY);
+
+      return button;
+    }
+
+    static createDropdown() {
+      const dropdown = document.createElement('div');
+      dropdown.id = CONFIG.DROPDOWN_ID;
+
+      Object.assign(dropdown.style, {
+        position: 'fixed',
+        top: '124px',
+        right: '20px',
+        zIndex: '9999',
+        border: '1px solid #ccc',
+        borderRadius: '6px',
+        padding: '10px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+        display: 'none',
+        background: Utils.isDarkMode() ? '#222' : '#fff',
+        color: Utils.isDarkMode() ? '#fff' : '#222'
+      });
+
+      const inputStyles = this.getInputStyles();
+
+      dropdown.innerHTML = `
+        <div style="margin-top:10px;">
+          <label style="margin-right:10px;">
+            <input type="radio" name="${CONFIG.EXPORT_MODE_NAME}" value="file" checked>
+            Export as file
+          </label>
+          <label>
+            <input type="radio" name="${CONFIG.EXPORT_MODE_NAME}" value="clipboard">
+            Export to clipboard
+          </label>
+        </div>
+        <div id="chatgpt-filename-row" style="margin-top:10px;display:block;">
+          <label for="${CONFIG.FILENAME_INPUT_ID}" style="font-weight:bold;">
+            Filename <span style="color:#888;font-weight:normal;">(optional)</span>:
+          </label>
+          <input id="${CONFIG.FILENAME_INPUT_ID}" type="text" value=""
+                 style="margin-left:8px;padding:2px 8px;width:260px;${inputStyles}">
+          <span style="display:block;font-size:0.93em;color:#888;margin-top:2px;">
+            Leave blank to use chat title or a timestamp. Do not include an extension.
+          </span>
+        </div>
+        <div style="margin-top:14px;">
+          <label style="font-weight:bold;">Select messages:</label>
+          <select id="${CONFIG.SELECT_DROPDOWN_ID}" style="margin-left:8px;padding:2px 8px;${inputStyles}">
+            <option value="all">All</option>
+            <option value="ai">Only answers</option>
+            <option value="none">None</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+      `;
+
+      return dropdown;
+    }
+  }
+
+  // ============================================================================
+  // EXPORT SERVICE
+  // ============================================================================
+  class ExportService {
+    constructor(checkboxManager) {
+      this.checkboxManager = checkboxManager;
+    }
+
+    // Legacy: scroll to top until the message count stops growing (works for non-virtualized pages)
+    async scrollToLoadAll() {
+      const first = Utils.getMessages()[0];
+      const container = first ? Utils.findScrollParent(first.el) : null;
+      if (!container) return; // short chat or nothing to scroll
+
+      let stableScrolls = 0;
+      let attempts = 0;
+
+      while (stableScrolls < CONFIG.TIMING.MAX_STABLE_SCROLLS && attempts < CONFIG.TIMING.MAX_SCROLL_ATTEMPTS) {
+        const before = Utils.getMessages().length;
+        container.scrollTop = 0;
+        await Utils.sleep(CONFIG.TIMING.SCROLL_DELAY);
+        const after = Utils.getMessages().length;
+
+        if (after === before && container.scrollTop === 0) {
+          stableScrolls++;
+        } else {
+          stableScrolls = 0;
+        }
+        attempts++;
+      }
+    }
+
+    findCopyButton(el) {
+      const turn = el.closest(CONFIG.SELECTORS.TURN_ROOT);
+      if (!turn) return null;
+
+      const messages = Utils.getMessages();
+      const candidates = Array.from(turn.querySelectorAll('button')).filter(b => {
+        if (el.contains(b)) return false; // skip "copy code" buttons inside the message
+        // only buttons that come AFTER this message (its own action bar), never the user message's one
+        if (!(el.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)) return false;
+        // skip buttons that belong to a different message
+        if (messages.some(m => m.el !== el && m.el.contains(b))) return false;
+        const label = `${b.getAttribute('aria-label') || ''} ${b.getAttribute('data-testid') || ''}`;
+        return /copy|コピー/i.test(label);
+      });
+      return candidates[0] || null;
+    }
+
+    async copyModelResponse(copyButton) {
+      try {
+        await navigator.clipboard.writeText('');
+      } catch (e) {
+        // Ignore clipboard clear errors
+      }
+
+      let attempts = 0;
+      while (attempts < CONFIG.TIMING.MAX_CLIPBOARD_ATTEMPTS) {
+        copyButton.click();
+        await Utils.sleep(CONFIG.TIMING.CLIPBOARD_READ_DELAY);
+        try {
+          const text = await navigator.clipboard.readText();
+          if (text) return text;
+        } catch (e) {
+          return '';
+        }
+        attempts++;
+        await Utils.sleep(CONFIG.TIMING.CLIPBOARD_CLEAR_DELAY);
+      }
+
+      return '';
+    }
+
+    // Fallback when the copy button is not usable: Turndown (if loaded) or plain text
+    htmlToText(el) {
+      if (typeof TurndownService !== 'undefined') {
+        try {
+          const clone = el.cloneNode(true);
+          clone.querySelectorAll(`.${CONFIG.CHECKBOX_CLASS}, button, svg`).forEach(n => n.remove());
+          const td = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced', bulletListMarker: '-' });
+          td.escape = s => s;                      // keep text as written (no backslash-escaping)
+          td.remove(['img', 'style', 'script']);   // favicons / icons from citation chips
+          const md = td.turndown(clone.innerHTML).trim();
+          if (md) return md;
+        } catch (e) {
+          console.warn('[ChatGPT Exporter] Turndown failed, using plain text', e);
+        }
+      }
+      return (el.innerText || '').trim();
+    }
+
+    // Virtualization support: scroll down step by step and store the TEXT of every message
+    // while it is in the DOM (elements disappear again once scrolled out of view).
+    // Returns [{ key, role: 'user'|'model', text }] in conversation order.
+    async harvestAll() {
+      const harvested = new Map();
+      const wait = CONFIG.TIMING.HARVEST_DELAY;
+      let seq = 0;
+
+      const first = Utils.getMessages()[0];
+      const container = first ? Utils.findScrollParent(first.el) : null;
+
+      const grab = async () => {
+        for (const { el, role } of Utils.getMessages()) {
+          let key = Utils.getUnitKey(el);
+          if (!key) key = `noKey-${seq++}`;
+          if (harvested.has(key)) continue;
+
+          let text = '';
+          if (role === 'user') {
+            text = (el.innerText || '').trim();
+          } else {
+            const btn = this.findCopyButton(el);
+            if (btn) {
+              text = await this.copyModelResponse(btn);
+              // safety net: if we copied one of the user's own messages by mistake, discard it
+              const t = text.trim();
+              if (t && Array.from(harvested.values()).some(h => h.role === 'user' && h.text.trim() === t)) {
+                text = '';
+              }
+            }
+            if (!text) text = this.htmlToText(el);
+          }
+          harvested.set(key, { key, role, text });
+        }
+      };
+
+      if (container) {
+        // ChatGPT loads older messages lazily when scrolled to the top:
+        // keep jumping to the top until the scrollable height stops growing.
+        let stable = 0;
+        let lastHeight = -1;
+        for (let i = 0; i < CONFIG.TIMING.MAX_SCROLL_ATTEMPTS && stable < CONFIG.TIMING.MAX_STABLE_SCROLLS; i++) {
+          Utils.createNotification('Loading older messages...', 1200);
+          container.scrollTop = 0;
+          await Utils.sleep(1000);
+          const h = container.scrollHeight;
+          if (h === lastHeight && container.scrollTop === 0) stable++; else stable = 0;
+          lastHeight = h;
+        }
+      }
+      await grab();
+
+      if (container) {
+        const step = Math.max(200, Math.floor(container.clientHeight * 0.7));
+        for (let i = 0; i < CONFIG.TIMING.MAX_HARVEST_STEPS; i++) {
+          Utils.createNotification(`Collecting messages... ${harvested.size}`, wait + 400);
+          const before = container.scrollTop;
+          container.scrollTop = before + step;
+          await Utils.sleep(wait);
+          await grab();
+          const atBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 2;
+          if (atBottom || container.scrollTop === before) break;
+        }
+      }
+
+      const order = k => {
+        const m = /turn-(\d+):(\d+)/.exec(k);
+        return m ? [Number(m[1]), Number(m[2])] : [1e9, 0];
+      };
+      const items = Array.from(harvested.values()).sort((a, b) => {
+        const [a1, a2] = order(a.key);
+        const [b1, b2] = order(b.key);
+        return a1 - b1 || a2 - b2;
+      });
+
+      const u = items.filter(x => x.role === 'user').length;
+      console.log(`[ChatGPT Exporter] harvested: ${items.length} (user: ${u}, assistant: ${items.length - u})`);
+      return items;
+    }
+
+    buildMarkdownFromItems(items, title) {
+      let markdown = title
+        ? `# ${title}\n\n`
+        : '# ChatGPT Chat Export\n\n';
+      markdown += `> Exported on: ${new Date().toLocaleString()}\n\n---\n\n`;
+
+      items.forEach((item, i) => {
+        if (item.role === 'user') {
+          markdown += item.text
+            ? `## 👤 You\n\n${item.text}\n\n`
+            : `## 👤 You\n\n[Could not read your message #${i + 1}.]\n\n`;
+        } else {
+          markdown += item.text
+            ? `## 🤖 ChatGPT\n\n${item.text}\n\n`
+            : `## 🤖 ChatGPT\n\n[Could not read response #${i + 1}.]\n\n`;
+        }
+        markdown += '---\n\n';
+      });
+
+      return markdown;
+    }
+
+    getConversationTitle() {
+      const heading = document.querySelector(CONFIG.SELECTORS.THREAD_TITLE);
+      if (heading?.textContent?.trim()) return heading.textContent.trim();
+      return document.title?.trim() || '';
+    }
+
+    generateFilename(custom, title) {
+      const baseTimestamp = Utils.getDateString();
+
+      if (custom?.trim()) {
+        let base = custom.trim().replace(/\.[^/.]+$/, '');
+        base = base.replace(/[^a-zA-Z0-9_\-]/g, '_');
+        return base || `chatgpt_chat_export_${baseTimestamp}`;
+      }
+
+      if (title) {
+        const safe = Utils.sanitizeFilename(title);
+        if (safe) return `${safe}_${baseTimestamp}`;
+      }
+
+      return `chatgpt_chat_export_${baseTimestamp}`;
+    }
+
+    async buildMarkdown(messages, title) {
+      let markdown = title
+        ? `# ${title}\n\n`
+        : '# ChatGPT Chat Export\n\n';
+      markdown += `> Exported on: ${new Date().toLocaleString()}\n\n---\n\n`;
+
+      for (let i = 0; i < messages.length; i++) {
+        const { el, role } = messages[i];
+        const checkbox = Utils.getOwnCheckbox(el);
+        if (!checkbox?.checked) continue;
+
+        Utils.createNotification(`Processing message ${i + 1} of ${messages.length}...`);
+
+        if (role === 'user') {
+          const userText = (el.innerText || '').trim();
+          markdown += userText
+            ? `## 👤 You\n\n${userText}\n\n`
+            : `## 👤 You\n\n[Could not read your message #${i + 1}.]\n\n`;
+        } else {
+          let responseText = '';
+          const copyBtn = this.findCopyButton(el);
+          if (copyBtn) {
+            responseText = await this.copyModelResponse(copyBtn);
+            // safety net: if we copied one of the user's own messages by mistake, discard it
+            const isUserText = messages.some(m =>
+              m.role === 'user' && (m.el.innerText || '').trim() === responseText.trim());
+            if (isUserText) responseText = '';
+          }
+          if (!responseText) {
+            responseText = this.htmlToText(el);
+          }
+          markdown += responseText
+            ? `## 🤖 ChatGPT\n\n${responseText}\n\n`
+            : `## 🤖 ChatGPT\n\n[Could not read response #${i + 1}.]\n\n`;
+        }
+
+        markdown += '---\n\n';
+      }
+
+      return markdown;
+    }
+
+    async export(markdown, mode, filenameBase) {
+      if (mode === 'clipboard') {
+        await navigator.clipboard.writeText(markdown);
+        alert('Conversation copied to clipboard!');
+        return;
+      }
+
+      const blob = new Blob([markdown], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `${filenameBase}.md`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      setTimeout(() => {
+        document.body.removeChild(anchor);
+        URL.revokeObjectURL(url);
+      }, 1000);
+    }
+
+    async execute(mode, customFilename) {
+      Utils.includeAll = false;
+      try {
+        const selection = document.getElementById(CONFIG.SELECT_DROPDOWN_ID)?.value || 'all';
+
+        // "All" / "Only answers": harvest while scrolling (works with virtualized chats)
+        if (selection === 'all' || selection === 'ai') {
+          this.checkboxManager.removeAll(); // checkboxes are not used in this path
+          let items = await this.harvestAll();
+          if (selection === 'ai') items = items.filter(x => x.role === 'model');
+
+          if (items.length > 0) {
+            const title = this.getConversationTitle();
+            const markdown = this.buildMarkdownFromItems(items, title);
+            const filenameBase = this.generateFilename(customFilename, title);
+            await this.export(markdown, mode, filenameBase);
+            return;
+          }
+          // nothing harvested: fall through to the legacy path (it shows the stale-data dialog etc.)
+        }
+
+        // "None" / "Custom" (or nothing harvested): legacy path based on checkboxes
+        await this.scrollToLoadAll();
+        this.checkboxManager.injectCheckboxes();
+
+        if (!this.checkboxManager.anyChecked()) {
+          // Nothing belongs to the chat that is open now, but other chats' messages are still in the page
+          if (Utils.getMessages({ all: true }).length > 0) {
+            const proceed = confirm(
+              'This page still holds data from a different chat (the page was not refreshed).\n' +
+              'Press Cancel, reload the page (F5) and try again.\n' +
+              'Press OK only if you want to export what is currently on the page anyway.'
+            );
+            if (!proceed) return;
+            Utils.includeAll = true;
+            this.checkboxManager.injectCheckboxes();
+          }
+        }
+
+        if (!this.checkboxManager.anyChecked()) {
+          alert('Please select at least one message to export.\n(No messages were detected on this page. ChatGPT\'s page structure may have changed.)');
+          return;
+        }
+
+        const messages = Utils.getMessages();
+        const title = this.getConversationTitle();
+        const markdown = await this.buildMarkdown(messages, title);
+        const filenameBase = this.generateFilename(customFilename, title);
+
+        await this.export(markdown, mode, filenameBase);
+      } finally {
+        Utils.includeAll = false;
+      }
+    }
+  }
+
+  // ============================================================================
+  // CONTROLLER
+  // ============================================================================
+  class ExportController {
+    constructor() {
+      this.checkboxManager = new CheckboxManager();
+      this.selectionManager = new SelectionManager();
+      this.exportService = new ExportService(this.checkboxManager);
+      this.button = null;
+      this.dropdown = null;
+    }
+
+    init() {
+      this.button = UIBuilder.createButton();
+      this.dropdown = UIBuilder.createDropdown();
+      document.body.appendChild(this.button);
+      document.body.appendChild(this.dropdown);
+      this.bindEvents();
+      this.observeVisibility();
+      this.toggleFilenameRow();
+    }
+
+    bindEvents() {
+      this.button.addEventListener('click', () => this.handleButtonClick());
+
+      this.dropdown.querySelector(`#${CONFIG.SELECT_DROPDOWN_ID}`)
+        .addEventListener('change', (event) => {
+          const value = event.target.value;
+          this.checkboxManager.injectCheckboxes();
+          this.selectionManager.apply(value);
+        });
+
+      document.addEventListener('change', (event) => {
+        if (event.target?.classList?.contains(CONFIG.CHECKBOX_CLASS)) {
+          const dropdown = document.getElementById(CONFIG.SELECT_DROPDOWN_ID);
+          if (dropdown && dropdown.value !== 'custom') {
+            dropdown.value = 'custom';
+            this.selectionManager.lastSelection = 'custom';
+          }
+        }
+      });
+
+      document.addEventListener('mousedown', (event) => {
+        if (this.dropdown.style.display !== 'none' &&
+            !this.dropdown.contains(event.target) &&
+            event.target !== this.button) {
+          this.dropdown.style.display = 'none';
+        }
+      });
+    }
+
+    toggleFilenameRow() {
+      const radios = this.dropdown.querySelectorAll(`input[name="${CONFIG.EXPORT_MODE_NAME}"]`);
+      const filenameRow = this.dropdown.querySelector('#chatgpt-filename-row');
+
+      const update = () => {
+        const fileRadio = this.dropdown.querySelector(`input[name="${CONFIG.EXPORT_MODE_NAME}"][value="file"]`);
+        if (filenameRow && fileRadio) {
+          filenameRow.style.display = fileRadio.checked ? 'block' : 'none';
+        }
+      };
+
+      radios.forEach(radio => radio.addEventListener('change', update));
+      update();
+    }
+
+    async handleButtonClick() {
+      this.checkboxManager.injectCheckboxes();
+
+      if (this.dropdown.style.display === 'none') {
+        this.dropdown.style.display = '';
+        return;
+      }
+
+      this.button.disabled = true;
+      this.button.textContent = 'Exporting...';
+      this.dropdown.style.display = 'none';
+
+      try {
+        const mode = this.dropdown.querySelector(`input[name="${CONFIG.EXPORT_MODE_NAME}"]:checked`)?.value || 'file';
+        const filenameInput = this.dropdown.querySelector(`#${CONFIG.FILENAME_INPUT_ID}`);
+        const customFilename = mode === 'file' ? filenameInput?.value?.trim() || '' : '';
+
+        await this.exportService.execute(mode, customFilename);
+
+        this.checkboxManager.removeAll();
+        this.selectionManager.resetDropdown();
+        if (filenameInput) filenameInput.value = '';
+
+      } catch (error) {
+        console.error('Export error:', error);
+        alert(`Export failed: ${error.message}`);
+      } finally {
+        this.button.disabled = false;
+        this.button.textContent = 'Export Chat';
+      }
+    }
+
+    observeVisibility() {
+      const update = () => {
+        try {
+          if (chrome?.storage?.sync) {
+            chrome.storage.sync.get(['hideExportBtn'], (result) => {
+              this.button.style.display = result.hideExportBtn ? 'none' : '';
+            });
+          }
+        } catch (error) {
+          console.error('Storage access error:', error);
+        }
+      };
+
+      update();
+
+      const observer = new MutationObserver(update);
+      observer.observe(document.body, { childList: true, subtree: true });
+
+      if (chrome?.storage?.onChanged) {
+        chrome.storage.onChanged.addListener((changes, area) => {
+          if (area === 'sync' && 'hideExportBtn' in changes) {
+            update();
+          }
+        });
+      }
+    }
+  }
+
+  // ============================================================================
+  // INIT
+  // ============================================================================
+  const controller = new ExportController();
+  controller.init();
+
+})();
