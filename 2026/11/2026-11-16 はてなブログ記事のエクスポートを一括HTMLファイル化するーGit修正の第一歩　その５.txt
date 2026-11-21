@@ -1,0 +1,2065 @@
+日時：2026-11-16
+タイトル：はてなブログ記事のエクスポートを一括HTMLファイル化するーGit修正の第一歩　その５
+文字数：56784
+---
+
+### はてなブログ記事のエクスポートを一括HTMLファイル化するーGit修正の第一歩　その５
+
+　文字数：63000字
+
+**You**:
+
+コイツを読んで、引き続き作業行きますよ。
+
+---
+
+**Claude**:
+
+読んだ。状況は「html2md.pyは完成、manual候補ゼロ達成。ここからは比較と元データ探し」の段階やね。
+
+スクリプト本体はそっちのPCにあって、こっちからは触られへんので、コマンドを回してもらって結果を貼ってもらう流れで行こか。
+
+## 次に回すもの（順番どおり）
+
+```
+cd C:\Blog-tools3
+python -I MD2txt.py --clean
+python -I compare_git.py --git "C:\Blog-tools3\gitlogs"
+```
+
+1本目で `**` と `#` を残した版の `txt out\` を作り直す。2本目でGitと突き合わせる。旧版の結果は「A 0 / B 0 / C 6559」で、ほぼ全部C判定やった。原因の比較バグとMarkdown剥がしは両方直したから、今回は大きく変わるはず。
+
+## 結果を貼ってほしいもの
+
+- compare_git.py のコンソールに出るサマリー（A / B / B2 / C+ / C- / C / D / E の件数）
+- `logs_compare\E_only_in_git_by_month.txt` の中身
+
+## 予想と、見るポイント
+
+- 素直に行けば、旧C 6559本のほとんどはA・B・B2に移るはず。Cのまま大量に残ったら、まだ別のズレがあるってこと。たぶん改行位置（新txtの中央値243行に対してGit側365行）が怪しいけど、そこはB2判定で吸収できる設計にしてある
+- **C-が出たらそこが最優先**。本文が減ってる＝事故やから、何本かファイル名を見せてもらえれば diag_compare.py で掘る
+- E（Gitにしかない分）は前回の見立てで1,357本。年月分布を見て、2024-10〜2025-12の「失われた時代」に固まってるかを確認する。固まってたら find_source.py の出番
+
+あと、find_source.py の `--pool` に渡す「はてなのエクスポート」と「GPT生データ」のフォルダパスが引き継ぎには `<...>` のままやった。どこに置いてるかも一緒に教えてくれたら、次のコマンドを完成形で出すわ。
+
+---
+
+**You**:
+
+その前に、フォルダとか、今までの作ってもらったPythonとかさ。どういう設計になってるかっていうの張っていくからね。
+どこに何があって、フォルダで使ってない奴整頓したりして、ちょっとまとめていかんとプログラムに埋め尽くされてまうｗ
+
+連携取れてないから昨日もGitcloneしとるなあ、って思ったのよ。
+そういうの整理してから先に進もうぜ。
+
+---
+
+**Claude**:
+
+ええね、それ先にやろ。今のままやと、スクリプトが増えるたびに「これどこで使うやつやっけ」が積み上がるだけやし。Gitのクローンが2個ある疑いも、まさに連携が取れてない症状やわ。
+
+貼るときに手で拾うと漏れるから、下の3つを回して出力をそのまま貼ってくれたら早い（PowerShell）。
+
+**1. フォルダごとの中身の量（どれが死んでるか見る用）**
+```powershell
+Get-ChildItem C:\Blog-tools*, C:\ -Directory -ErrorAction SilentlyContinue |
+ Where-Object { $_.FullName -like 'C:\Blog-tools*' } |
+ ForEach-Object { Get-ChildItem $_.FullName -Directory } |
+ ForEach-Object {
+   $f = Get-ChildItem $_.FullName -File -Recurse -ErrorAction SilentlyContinue
+   $last = ($f | Sort-Object LastWriteTime -Desc | Select-Object -First 1).LastWriteTime
+   "{0}`t{1}本`t最終更新 {2}" -f $_.FullName, $f.Count, $last
+ }
+```
+
+**2. Pythonの一覧（どこに何本あるか・いつ触ったか）**
+```powershell
+Get-ChildItem C:\Blog-tools* -Filter *.py -Recurse -ErrorAction SilentlyContinue |
+ Select-Object FullName, Length, LastWriteTime | Format-Table -AutoSize
+```
+
+**3. Gitクローンの重複チェック**
+```powershell
+Get-ChildItem C:\ -Directory -Filter .git -Recurse -Hidden -Depth 4 -ErrorAction SilentlyContinue |
+ ForEach-Object { $_.Parent.FullName; git -C $_.Parent.FullName remote get-url origin }
+```
+同じ `unsuitable-junkyard/logs` を指してるクローンが2行以上出たら、それが昨日のダブりやね。
+
+貼ってもらったら、こっちで次の3つにまとめる。
+- **フォルダ地図**：どのスクリプトがどこを読んで、どこに書くか（入力→出力の矢印）
+- **現役／引退／不明の仕分け**：引退組は消さずに `_archive\` へ移す案で出す。ゴミ箱事故の前科があるから、削除は無しで
+- **スクリプト台帳**：1本1行で「何をする・どのパイプラインの所属・今も使うか」
+
+あと、スクリプト本体の中身も設計の確認に使いたい。特に入出力のパスを決めてる冒頭あたり。全部貼ると重いから、まずは一覧から見て、怪しいやつだけ中身を出してもらう順番で行こか。
+
+---
+
+**You**:
+
+まずは１．やってみたぜ。
+
+こんな感じな。
+
+---
+
+**Claude**:
+
+いきなり当たりが出たで。
+
+先にこっちのミスを1個だけ言うとく。全部2回ずつ出てるのは、コマンドが `C:\Blog-tools*` と `C:\` の両方から同じフォルダを拾ったせい。中身には影響ないから、下の表は重複を消して読んでる。
+
+## 気になったところ（優先度順）
+
+**① Gitクローン、やっぱり2つある**
+- `C:\blog-tools\repo` 7936本（最終更新 11/14 2:22）
+- `C:\Blog-tools3\gitlogs` 7936本（最終更新 11/14 23:45）
+
+本数が完全に一致してる。しかも `repo` の更新時刻が `reupload`・`Blog-tools3\txt` と同じ 2:22:41 やから、`repo` は「作り直したtxtを書き込んだ作業用」、`gitlogs` は夜に取った新しいクローン、という可能性が高い。もしそうなら、**`repo` には未コミットの変更が乗ってるかもしれん**。消す前に必ず `git status` を見る必要あり。
+
+**② `C:\Blog-tools2\md` が0本**
+引き継ぎでは「約5,700件の過去ログMD」がここにあって、find_source.py の `--pool` に渡す予定やった。`md_raw` も0本。どっかへ移したか、出力先が別か。ここが空のまま find_source を回すと、全部 notfound になって作業が無駄になる。**これは整理より先に確認したい。**
+
+**③ 空フォルダ6つ**
+`blog-tools\Blog text` `整形前フォルダ` `整形済みフォルダ` / `Blog-tools2\html` `md` `md_raw`
+②の答えが出るまでは `md` と `md_raw` は触らんとこ。
+
+## 仮の地図
+
+| 場所 | 本数 | 見立て | 扱い案 |
+|---|---|---|---|
+| **blog-tools**（初代） | | | |
+| output | 8082 | 初代パイプラインの出力 | 引退候補 |
+| repo | 7936 | Gitクローン①（作業用？） | status確認後に判断 |
+| reupload | 470 | Git再アップ用に作ったtxt | repoとの関係を確認 |
+| 旧スクリプト | 28 | 名前どおり | `_archive` 行き |
+| 未使用－はてなアップ / 除外記事（TXT) | 2 / 9 | 5月の残り物 | 保管（小さいし） |
+| **Blog-tools2**（GPTエクスポート整頓） | | | |
+| HTMLchange | 22107 | 謎。数がでかい | 中身の確認が必要 |
+| raw / 未アップ…HTMLしたやつ | 981 / 981 | 未アップ記事のtxtとHTML版 | 現役？ |
+| md / md_raw | 0 / 0 | **5,700件はどこへ** | ②を確認 |
+| **Blog-tools3**（今回の本丸） | | | |
+| src → md → txt → html | 473→686→471→470 | doc2md系（odt/docx起点） | 現役 |
+| src html → md out → txt out | 6662→6662→6662 | html2md系 | 現役・本体 |
+| gitlogs | 7936 | Gitクローン② | 正式なクローンをこっちに一本化？ |
+| manual / Manual_html / Manual_html_plain | 62 / 32 / 35 | 引き継ぎどおり | 現役 |
+| 要らないスクリプト置き | 6 | 自分で避難させた分 | `_archive` に合流 |
+| __pycache__ | 1 | Pythonの自動キャッシュ | 消してOK |
+
+Blog-tools3の中に、doc2md系とhtml2md系の2本のラインが同居してる形やね。`src` と `src html`、`md` と `md out`、`txt` と `txt out` で名前がほぼ同じやから、昨日みたいに混線するのも無理ないわ。整理するなら、ここの命名を揃えるのが一番効くと思う。
+
+## 次に回してほしいもの
+
+2と3に加えて、①と②の確認を1本ずつ足した。
+
+```powershell
+# 2. Pythonの一覧
+Get-ChildItem C:\Blog-tools* -Filter *.py -Recurse -ErrorAction SilentlyContinue |
+ Select-Object FullName, Length, LastWriteTime | Format-Table -AutoSize
+
+# 3. Gitクローンの重複と未コミットの有無
+foreach ($d in 'C:\blog-tools\repo','C:\Blog-tools3\gitlogs') {
+  "== $d"; git -C $d remote get-url origin; git -C $d log -1 --format='%h %ci %s'
+  "未コミット: " + (git -C $d status --porcelain | Measure-Object).Count + " 件"
+}
+
+# 4. 5,700件のMDの行方
+Get-ChildItem C:\ -Directory -Recurse -Depth 3 -ErrorAction SilentlyContinue |
+ Where-Object { (Get-ChildItem $_.FullName -Filter *.md -File -ErrorAction SilentlyContinue | Measure-Object).Count -gt 1000 } |
+ ForEach-Object { "{0}`t{1}本" -f $_.FullName, (Get-ChildItem $_.FullName -Filter *.md -File).Count }
+```
+
+4は、Cドライブ直下から3階層下までで、MDが1000本以上入ってるフォルダを探すコマンド。ちょっと時間かかるかも。
+
+---
+
+**You**:
+
+さっきのファイルに追記した。2，3，4実行後ね。
+
+---
+
+**Claude**:
+
+## ⚠️ 先にこれだけ：GitHubのトークンが丸見えになってる
+
+`repo` のリモートURLに `ghp_…` で始まる文字列が入ってる。これはGitHubのパスワード代わりになる「個人アクセストークン」で、今このチャットにも貼られてしもた。持ってる人は誰でも、`logs` リポジトリに書き込んだり消したりできる。
+
+整理より先に、これを片付けよ。
+
+1. **トークンを無効化する**：GitHubの Settings → Developer settings → Personal access tokens で該当のトークンを Revoke（削除）
+2. **URLからトークンを外す**
+   ```powershell
+   git -C C:\blog-tools\repo remote set-url origin https://github.com/unsuitable-junkyard/logs.git
+   ```
+   次にpushしたとき、Git for Windows付属の資格情報マネージャーがログイン画面を出してくれる。そこで一回認証したら、以後はWindows側が覚えてくれる
+3. **スクリプトに直書きしてないか確認する**
+   ```powershell
+   Select-String -Path C:\blog-tools\*.py, C:\blog-tools\旧スクリプト\*.py, C:\Blog-tools2\*.py, C:\Blog-tools3\*.py -Pattern 'ghp_|github_pat_'
+   ```
+   何か出たら、その行は新しいトークンに差し替えるんやなくて、消す方向で直そ
+
+## Gitクローン：2つは完全に同一
+
+両方とも最終コミットが `4f8a68d`（11/14 2:59 batch 46）で、未コミットも0件。中身はまったく同じやから、**1つ消しても何も失わへん**。違いは、`repo` がpushできる（トークン付き）、`gitlogs` が読むだけ、という点だけ。
+
+なので案としては、クローンは1つに絞って、置き場所をどのBlog-toolsにも属さない中立なところに移す。
+`C:\Blog-git\logs` みたいな場所にして、push系も比較系も全部そこを見るようにする。こうしとけば「どっちのクローンやったっけ」がそもそも起きひん。
+
+## MD 5,700件：Cドライブの浅いところには無い
+
+1000本以上MDが入ってるフォルダは `md out` しか引っかからんかった。ここで怪しいのが2つある。
+
+- `convert_md.py` の更新が 11/14 11:22、`Blog-tools2\logs` の更新が 11:23。最後に回したとき、出力先を別にしたか、`--clean` で消した可能性がある
+- `HTMLchange` が22,107本もあって、`.py` まで中に入ってる。データとスクリプトが同居してる時点で、ここに何か混ざってそう
+
+```powershell
+# HTMLchangeの中身を拡張子別・サブフォルダ別に
+Get-ChildItem C:\Blog-tools2\HTMLchange -File -Recurse | Group-Object Extension | Select-Object Name, Count
+Get-ChildItem C:\Blog-tools2\HTMLchange -Directory | ForEach-Object { "{0}`t{1}本" -f $_.Name, (Get-ChildItem $_.FullName -File -Recurse).Count }
+# convert_md.py の最後のログ
+Get-ChildItem C:\Blog-tools2\logs | Sort-Object LastWriteTime -Desc | Select-Object -First 3 Name, LastWriteTime
+```
+
+ログの中身も、最後の1本の末尾20行くらい貼ってくれたら、どこに書き出したか分かるはず。
+
+## スクリプト台帳（仮）
+
+| 場所 | スクリプト | 見立て |
+|---|---|---|
+| **blog-tools 直下** | repo_uploader.py (11/11) | 日常のGit上げ？ |
+| | repo_reuploader.py (11/14) | 今回の再アップ用。batch 46を打ったやつ |
+| | md_to_txt.py (11/13) | 日常のMD→TXT？ Blog-tools3の **MD2txt.py と役割がかぶってる** |
+| | make_blogger_range.py / make_summary_html.py / rename_by_date Ver2.py | 日常運用？ |
+| | html_to_txt.py | 旧スクリプトの「html_to_txt - txt変更前.py」と**サイズも日時も完全一致**。同じファイルが2箇所にある |
+| **旧スクリプト** | 24本 | `-old` `old1` `old2` の世代違いが多い。全部引退でええと思う |
+| **Blog-tools2** | convert.py / convert_md.py / split.py / survey.py | GPTエクスポートの整頓用 |
+| | HTMLchange\complement_html.py / migrate_html.py | データフォルダの中に置かれてる。外に出すべき |
+| **Blog-tools3** | html2md / MD2txt / compare_git / diag_compare / find_source / doc2md / txt2html / survey_html | 引き継ぎどおり。現役 |
+| | 要らないスクリプト置き 4本 | 引退 |
+
+整理の考え方としては、**「毎日使う運用」と「今回だけの復元工事」を分ける**のが一番すっきりする。今は blog-tools 直下に、日常用と工事用（repo_reuploader）が混ざってるのが混線の元やね。
+
+その線引きのために一個だけ教えてほしい。**今、新しい記事を上げるときに毎回回してるのはどれ？** たぶん `md_to_txt.py` → `repo_uploader.py` の流れやと思うけど、そこが確定したら、残りは工事用か引退かに振り分けられる。
+
+---
+
+**You**:
+
+それ、早とちりちゃうかな。
+前回もそういって別ファイルに隔離したぜ？
+
+レポジトリ用トークン
+
+ここにある奴と、その「直書き込まれてるって奴」。同じか確認するから、repoのURL、ちょっと正確にどこか教えてもらえる？
+
+---
+
+**Claude**:
+
+せやな、言い方が雑やった。「スクリプトに直書き」は確認せんと言うた推測。トークンを別ファイルに隔離してあるなら、それが正しい形やわ。
+
+今わかってるのは、`git remote get-url origin` の結果にトークン入りのURLが出た、というところまで。その値が実際どのファイルから来てるかは、まだ見てへん。候補は3つある。
+
+1. **`C:\blog-tools\repo\.git\config`** の `[remote "origin"]` の `url =` の行。一番ありがちな場所
+2. **グローバル設定（`C:\Users\xxxxx\.gitconfig`）の `insteadOf`**。「github.com へのアクセスはトークン付きURLに読み替えろ」という設定。これがあると `get-url` は読み替え後の値を表示するから、`.git\config` 自体はきれいでもトークンが見える
+3. **スクリプトが実行中に書き込んだ**。たとえば repo_reuploader.py が隔離ファイルからトークンを読んで `git remote set-url` を打つ作りなら、結果として①に残る
+
+どれかは、これで出所のファイル名ごと出る。
+
+```powershell
+git -C C:\blog-tools\repo config --show-origin --get-all remote.origin.url
+git config --global --show-origin --get-regexp "url\..*"
+```
+
+1行目で `file:.git/config` と出たら①、2行目で何か出たら②やね。①やったら、隔離ファイルのトークンと同じ値かどうか目で照合したらええ。
+
+ひとつだけ事実として残る話をしとく。どのファイル由来であっても、さっきの貼り付けでトークンの値自体はこのチャットに載った。隔離ファイルと同じ値なら、そのトークンは作り直しておくのが安全やと思う。そこはそっちの判断で。
+
+---
+
+**You**:
+
+git config --global --show-origin --get-regexp "url\..*"
+
+これ、打ち込んでも何も出んね？
+
+---
+
+**Claude**:
+
+It means option ② is ruled out — the global config has no `insteadOf` rewrite. So the token isn't coming from the global settings.
+
+That leaves ① or ③. Run the first line too:
+
+```powershell
+git -C C:\blog-tools\repo config --show-origin --get-all remote.origin.url
+```
+
+This will very likely show `file:.git/config` followed by the token-bearing URL. Then the token is written directly into `C:\blog-tools\repo\.git\config`. You can open the file itself in Notepad:
+
+```powershell
+notepad C:\blog-tools\repo\.git\config
+```
+
+If the `url =` line under `[remote "origin"]` contains `ghp_…`, that's the actual location.
+
+Telling ① from ③ means checking whether a script wrote it there, which is a separate question. Searching the script for `set-url` or `remote` will settle it:
+
+```powershell
+Select-String -Path C:\blog-tools\repo_reuploader.py, C:\blog-tools\repo_uploader.py -Pattern 'set-url|remote|token' | Select-Object Filename, LineNumber, Line
+```
+
+If one of them reads from the isolated file and does `set-url`, that's case ③. In that case the isolation itself is working, and the script is writing the token back into `.git\config` every time it runs.
+
+---
+
+**You**:
+
+回答、急に英語なってるわw　翻訳頼むwww
+
+---
+
+**Claude**:
+
+ごめん、急に英語になってたわｗ　同じ内容を日本語で書き直すで。
+
+何も出えへんってことは、②は消えた。グローバル設定に `insteadOf` の読み替えは入ってないから、トークンはグローバル設定から来てるわけやない。
+
+残りは①か③やね。1行目の方も打ってみて。
+
+```powershell
+git -C C:\blog-tools\repo config --show-origin --get-all remote.origin.url
+```
+
+たぶん `file:.git/config` に続いてトークン入りのURLが出るはず。そうなら、トークンは `C:\blog-tools\repo\.git\config` に直接書かれてる。ファイルそのものはメモ帳で開ける。
+
+```powershell
+notepad C:\blog-tools\repo\.git\config
+```
+
+`[remote "origin"]` の下の `url =` の行に `ghp_…` が入ってたら、そこが実際の置き場所。
+
+①か③かは、スクリプトがそこに書き込んだかどうかで決まる。これは別の話やから、スクリプトの中で `set-url` か `remote` を探せばはっきりする。
+
+```powershell
+Select-String -Path C:\blog-tools\repo_reuploader.py, C:\blog-tools\repo_uploader.py -Pattern 'set-url|remote|token' | Select-Object Filename, LineNumber, Line
+```
+
+どっちかのスクリプトが隔離ファイルからトークンを読んで `set-url` してたら③。その場合、隔離そのものはちゃんと効いてる。ただ、スクリプトを回すたびに `.git\config` にトークンを書き戻してる、という状態やね。
+
+---
+
+**You**:
+
+1行目こんな感じ。
+
+PS C:\Users\xxxxx> git -C C:\blog-tools\repo config --show-origin --get-all remote.origin.url
+file:.git/config        https://github.com/unsuitable-junkyard/logs.git
+
+トークン？
+
+---
+
+**Claude**:
+
+お、今はトークン入ってへんな。`.git\config` に書かれてるのは素の `https://github.com/unsuitable-junkyard/logs.git` だけや。
+
+でも、7:49に貼ってもらった `git remote get-url origin` の結果には、間違いなく `ghp_…` 付きで出てた。同じリポジトリやのに表示が食い違ってるから、考えられるのは次の3つ。
+
+1. **その間にURLが書き換わった**。さっきの `set-url` をもう打ってくれてたなら、それで説明がつく
+2. **スクリプトが一時的にトークン付きURLへ差し替えて、終わったら戻す作り**。push中だけトークンを入れて、最後に元に戻すパターンやね。これなら隔離はちゃんと機能してる
+3. **グローバル以外のどこかに `insteadOf` がある**。さっき見たのはグローバル設定だけで、システム設定（Git本体のフォルダ側）やリポジトリ内の設定は見てへん
+
+③は1発で潰せる。全スコープまとめて見るコマンドと、今の `get-url` をもう一回並べるとこうなる。
+
+```powershell
+git -C C:\blog-tools\repo config --show-origin --get-regexp "url\..*"
+git -C C:\blog-tools\repo remote get-url origin
+```
+
+- 2行目が素のURLで出たら、今はきれいな状態。原因は①か②
+- 2行目にまだトークンが出て、1行目に `insteadOf` の行が出たら③。出所のファイル名もその行に一緒に出る
+
+②かどうかは、さっきの `Select-String`（`set-url|remote|token` を探すやつ）を回したら分かる。
+
+---
+
+**You**:
+
+PS C:\Users\xxxxx> git -C C:\blog-tools\repo config --show-origin --get-regexp "url\..*"
+PS C:\Users\xxxxx> git -C C:\blog-tools\repo remote get-url origin
+https://github.com/unsuitable-junkyard/logs.git
+
+やっぱ出てないんちゃう？
+
+---
+
+**Claude**:
+
+うん、今はきれいや。どのスコープにも `insteadOf` は無いし、`get-url` も素のURLで返ってきてる。トークンの置き場所としては、今の `repo` は問題なし。
+
+残ってるのは「7:49の時点ではなんでトークン付きで出たんか」だけやね。さっき挙げた①（その間に `set-url` を打った）か②（スクリプトが一時的に差し替えて戻す作り）のどっちか。②なら、前回やってくれた隔離がちゃんと動いてる証拠になる。確かめたかったら、これ1本で分かる。
+
+```powershell
+Select-String -Path C:\blog-tools\repo_reuploader.py, C:\blog-tools\repo_uploader.py -Pattern 'set-url|remote|token' | Select-Object Filename, LineNumber, Line
+```
+
+ただ、これは急ぐ話やない。トークンを作り直すかどうかは前に言うたとおりそっちの判断に任せて、本題の整理に戻ろか。
+
+戻り先はさっきの台帳の宿題で、**新しい記事を上げるとき、毎回回してるのはどれ？** というところ。たぶん `md_to_txt.py` → `repo_uploader.py` やと思てる。そこが決まったら、
+
+- 日常運用のフォルダ
+- 復元工事（Blog-tools3・repo_reuploader）のフォルダ
+- 引退（`_archive`）
+
+の3つに振り分けた整理案を出すわ。クローンを1本化する件と、消えたMD 5,700件の行方（HTMLchangeの中身の確認）も、その案に入れる。
+
+---
+
+**You**:
+
+PS C:\Users\xxxxx> Select-String -Path C:\blog-tools\repo_reuploader.py, C:\blog-tools\repo_uploader.py -Pattern 'set-url|remote|token' | Select-Object Filename, LineNumber, Line
+
+Filename           LineNumber Line
+--------           ---------- ----
+repo_reuploader.py         59 REPO_TOKEN = os.environ.get("REPO_TOKEN", "")
+repo_reuploader.py         85     if REPO_TOKEN:
+repo_reuploader.py         86         text = text.replace(REPO_TOKEN, "****")
+repo_reuploader.py        172     if REPO_TOKEN:
+repo_reuploader.py        173         git_cmd(["remote", "set-url", "origin",
+repo_reuploader.py        174                  f"https://{REPO_TOKEN}@github.com/{GITHUB_USER}/{REPO_NAME}.git"], cw...
+repo_uploader.py           45 REPO_TOKEN = os.environ.get("REPO_TOKEN", "")
+repo_uploader.py           73     if REPO_TOKEN:
+repo_uploader.py           74         text = text.replace(REPO_TOKEN, "****")
+repo_uploader.py          133         "remote", "set-url", "origin",
+repo_uploader.py          134         f"https://{REPO_TOKEN}@github.com/{GITHUB_USER}/{REPO_NAME}.git"
+
+見た感じ、ちゃんと隔離できとるんちゃうかなあ？
+
+---
+
+**Claude**:
+
+うん、隔離はちゃんとできてる。トークンは環境変数 `REPO_TOKEN` から読んでて、コードには書いてない。ログに出すときも `****` に伏せてある。ここは前回の作りで正解やね。疑ってすまんかった。
+
+ひとつだけ、穴というほどでもない「残り香」がある。どっちのスクリプトも `set-url` でトークン付きURLに差し替えてるのに、**元の素のURLに戻す行が見当たらへん**（`set-url` で検索して、引っかかったのは差し替える側だけやった）。つまり、スクリプトを1回回すと、次に誰かが戻すまで `.git\config` にトークンが平文で残る。7:49にトークン付きで出てたのはこれが原因やろね。今きれいなのは、その後どこかで素のURLに戻ったからやと思う。
+
+直すなら、`set-url` をやめて、push先のURLをその場で直接渡す形が一番シンプル。こうすると設定ファイルには何も書かれへん。
+
+```python
+# set-url を消して、push の行をこう変える
+git_cmd(["push", f"https://{REPO_TOKEN}@github.com/{GITHUB_USER}/{REPO_NAME}.git", "HEAD"], ...)
+```
+
+`.git\config` に残らへんから、今回みたいに「あれ、トークン出てる？」と驚くこともなくなる。急ぎやないから、整理のついでに直すリストに入れとくわ。
+
+ほな本題に戻ろ。**新しい記事を上げるとき、毎回回してるのはどれ？** `repo_uploader.py` が日常用で、`repo_reuploader.py` が今回の再アップ工事用、っていう見立てで合ってる？ あと、`md_to_txt.py` は日常で使ってる方？ ここが決まったら振り分け案を出すで。
+
+---
+
+**You**:
+
+`repo_uploader.py` が日常用で、`repo_reuploader.py` が今回の再アップ工事用、っていう見立てで合ってる？
+
+その流sれでOK。reupは昨日突貫で作った、壊れてたテキストを上げるための措置やな。
+
+md2textはその際に作った緊急措置用で、今のところはまだ本格活動はしてないの。
+今回見るべきはさ、まず「MD」をきちんと作り上げてから、「HTMLとtxt」ファイルを作って、これをrepo_uploaderと統一するようなイメージにしてたわけ。
+
+要するにだな「過去のテキストを一本化できたMD」を作るのが最優先って見てる。
+
+そのために「はてなのログ全部（HTML→MD※これから精査）」「GPTログ（MD※まだ未精査）」
+後、「今までに下書きで置いてたHTML（※今回tool3のsrc_htmlに入れた）
+
+それ以外にも原本のテキストとか（別フォルダ管理）Claudeのログ（未取得）とかがあるわけでさ。
+
+別に今までの「gitに上げたもの（テキスト）」を正本にする必要はなくて。あー、こういう記事あったっけ、のインデックスくらいの感覚なのよ。それを参考に「MDをきれいに戻して保管する」ってね。
+
+---
+
+**Claude**:
+
+了解、全体像がはっきりした。整理するとこうやね。
+
+- **ゴールはMDの正本アーカイブ**。過去の記事を1本化して、きれいに保管する
+- Gitのtxtは正本やなくて**目次**。「こんな記事あったっけ」の照合に使うだけ
+- txtとHTMLは、MDから作る「出力品」。最後に repo_uploader の流れに合流させる
+
+こう見ると、compare_git.py の位置づけも変わるな。「新旧で本文が一致してるか」の検査より、**「目次に載ってる記事が、全部MD側に揃ってるか」の点呼**の方が本業になる。E判定（Gitにしかない）＝まだどの素材からもMDになってない記事、っていう読み方や。
+
+## 設計案：3段構え
+
+```
+【素材】読むだけ。絶対に書き換えない
+  ├ 下書きHTML        … Blog-tools3\src html        → html2md.py ✅済
+  ├ 原本 odt/docx/txt … Blog-tools3\src（＋別フォルダ管理の分） → doc2md.py ✅済？
+  ├ はてなログ        … （場所？）                  → hatena2md 未作成
+  ├ GPTログ           … （場所？ 5,700件の行方）    → convert_md.py で整頓中
+  └ Claudeログ        … 未取得                      → 後回し
+
+【変換】素材ごとに「候補MD」を作る（素材別のフォルダに分けて置く）
+
+【統合】同じ記事の候補が複数あったら1本に決めて → 正本MD
+        └ 点呼：Gitのtxt（目次）と照合して、漏れを出す
+
+【出力】正本MD → txt / HTML → repo_uploader → Git
+```
+
+ポイントは、変換と統合を分けること。今の html2md.py や doc2md.py は、それぞれ「自分の素材から作ったMD」を出すところまでで止めとく。どれを正本にするかは、統合の段で一括して決める。こうしとけば、あとから はてな や Claude の素材が増えても、変換スクリプトを1本足すだけで済む。
+
+## 決めなあかんこと
+
+**① 同じ記事が複数の素材にあったとき、どれを勝たせるか**
+
+ここが設計の心臓部やと思う。候補を並べるとこう。
+
+| 素材 | 強み | 弱み |
+|---|---|---|
+| はてな | 読者が実際に見たもの | 投稿時の加工が入ってる可能性 |
+| 下書きHTML | ラベル付きで構造が一番整ってる | 投稿前の版かもしれん |
+| GPTログ | AIの生の発言そのもの | 記事として切り出す前の全量。余計な部分も入ってる |
+| 原本 odt/docx | 本人が編集した元 | 時期によって書式がばらばら |
+
+「生ログで修正なし」が方針やから、どれが一番「生」に近いかで順位を決めるのが筋かな。これは本人やないと決められへんところやね。
+
+**② 素材の置き場所**
+
+はてなのエクスポートと、GPTログのMD（5,700件）。どっちもまだ場所が分かってへん。特にGPTの方は、引き継ぎに書いてた `Blog-tools2\md` が空やった件が残ってる。さっきの HTMLchange の中身を確認するコマンドを回すか、心当たりのフォルダを教えてくれたら、そこから追うで。
+
+**③ フォルダの作り方**
+
+正本MDの置き場所と、素材・候補MDのフォルダを、どこに新しく切るか。たたき台はこんな感じ。
+
+```
+C:\Blog-archive\
+  sources\      素材（読むだけ）
+  candidates\   素材別の候補MD（html\ doc\ hatena\ gpt\ claude\）
+  master\       正本MD  ← これが成果物
+  out_txt\ out_html\
+C:\Blog-git\logs\   Gitクローンは1本だけ
+```
+
+ツール類（Blog-tools / 2 / 3）は、とりあえず今の場所のままでええと思う。中を整理するのは後でいい。まずデータの置き場所を決めて、そこを見るように各スクリプトのパスを向け直していく順番やね。
+
+①はゆっくり考えてくれてええ。②さえ分かれば、素材の棚卸しから先に進められる。
+
+---
+
+**You**:
+
+手順としてやってる事を考えるとこうな。
+
+1．AIトークをする
+
+2．ツールを使ってMD、コピペでnotepad等に張る　（事故る原因、うまくデータ読めてない時がある）
+
+3．notepadで誤字、ちょっと直したり、名前入れ替える（🤖👤付与）、タイトルを差し替えてMD保管　付与忘れ、タイトル忘れよくある
+
+4．MD→txtの変更処理をしてuploderでgitに
+
+5．MD→HTMLはやろうかなあ、と思いながら放置中　今回の大改造の原因。
+
+一応生ログと言いながらも、AIが事故って同じ出力2回してるようなやつは手作業で3．で修正するからね。
+4．まで上がったやつが一応私の中では「生ログ風味の最終出力物」になるかなって。
+別に厳密に修正もしてない、誤字放置とか普通やからねw
+
+---
+
+**Claude**:
+
+なるほど、日常の流れを聞いて①の答えがほぼ出たわ。
+
+## 正本＝「3. の手直し後のMD」
+
+生ログ言うても、3. で重複出力を消して、🤖👤を付けて、タイトルを入れてる。つまり**読者に出してええ形になるのは3. を通った後**や。誤字が残ってても、それ込みで「生ログ風味の最終出力物」やね。
+
+そうなると、過去分を復元するときの素材の順位はこうなる。
+
+| 順位 | 素材 | 理由 |
+|---|---|---|
+| 1 | はてな／下書きHTML／原本 | 3. の手直しを通った後のもの |
+| 2 | Gitのtxt | 中身は3. の後やけど、つぎはぎで構造が壊れてる。目次と、本文の照合用 |
+| 3 | GPTログ | 1. のトークそのもの。重複出力もラベル無しも全部入り。**本文のソースとしては最後の手段** |
+
+GPTログの役割は、本文の供給元というより**「ラベルが欠けたところの答え合わせ」**やね。どこからがAIの発言かは、生のトークを見たら確実に分かる。
+
+## 事故の発生源は2. と3.
+
+今回の大改造の原因をたどると、全部ここに行き着く。
+
+- 2. のコピペ：データがちゃんと読めてないことがある
+- 3. の手作業：🤖👤の付け忘れ、タイトルの差し替え忘れ
+- 5. の放置：HTMLが無いから、あとで作るときに過去のばらばらな形式とまとめて戦うことになった
+
+なので、復元工事とは別に、**日常の流れの方にも関所を1個置く**のがええと思う。3. と4. の間で回すチェック用のスクリプトで、中身はこんな感じ。
+
+- 🤖👤が両方そろってるか、片方に偏ってないか（html2md.py のゲートとほぼ同じ理屈）
+- タイトルが差し替わってるか（「無題」やGPTの自動タイトルのまま残ってないか）
+- 同じブロックが連続してないか（AIの二重出力の消し忘れ）
+
+で、それを通ったら4. と5. を1コマンドでまとめて回す。MD → txt ＋ HTML → uploader の順や。txt2html.py はもうあるから、5. の放置もこれで自然に消える。
+
+## 作業の順番
+
+1. **素材の棚卸し**：はてなのエクスポートとGPTログの場所を特定する。5,700件の行方もここで追う
+2. **点呼**：Gitのtxtを目次にして、どの記事がどの素材にあるかの一覧表を作る
+3. **統合**：その表と上の順位で正本MDを組み立てる
+4. **日常の関所**：チェック用スクリプトと、4.＋5. の一本化
+
+日常の関所は小さいから先に作ってもええ。ただ、正本MDのラベル表記（🤖👤の書き方）が決まってからの方が手戻りが無いから、3. の後に置いといた。
+
+まずは棚卸しやね。はてなのエクスポートって、どこに置いてる？
+
+---
+
+**You**:
+
+あー、手作業で👤🤖面倒だから、MDはもう**user**のままでいいかな？って思い始めてる。
+
+出力の中にAIがChatGPTとか出してても**ChatGPT**みたいな形で出すこと稀だろうからさ。
+反対にどこが「発言者の頭か」って見るなら、そのままのほうがきれいになるじゃん？
+
+事故も防げるし、結局「HTML,TEXT」に変換する際に「発言者の頭に🤖AIネーム」ってする方がよくね？
+
+---
+
+**Claude**:
+
+それ、賛成。むしろそっちが筋やと思う。
+
+## 理由：表示と中身を分けられる
+
+👤🤖は「読者にどう見せるか」の飾りで、MDに要るのは「ここから誰の発言か」という情報だけ。飾りを出力側で付けるようにすると、こんな得がある。
+
+- **付け忘れが原理的に起きひん**。3. の手作業が1個減る
+- **見せ方をあとから全部まとめて変えられる**。来年「🤖やめて色分けにしよ」と思っても、変換を回し直すだけで7,000本以上が揃う。MDに絵文字を焼き込んでたら、これは無理
+- 今回の大改造みたいに「時期ごとに表記がばらばら」が、今後は出力側でしか起きひんようになる
+
+## ひとつだけ足したいルール：ラベル行の形を固定する
+
+「`**ChatGPT**` をAIが本文で書くことは稀」はその通り。ただ、html2md.py で散々踏んだ地雷を思い出してほしい。採点表の行見出しや、AIが寸劇で書いた「ChatGPT：「…」」を、ラベルと誤読してたやつや。あれを二度と踏まんように、ラベルの条件を厳しめに決めとくのがおすすめ。
+
+- **その行に `**名前**` しか無い**（後ろにコロンが付いてもOK、本文は続けない）
+- **名前は決まった一覧の中のどれか**：`User` `ChatGPT` `Claude` `Gemini` `MetaAI` …みたいな形
+- 一覧に無い名前が太字だけで1行に置かれてたら、ラベル扱いせずに**警告だけ出す**
+
+この3つで、本文中の「**ChatGPT**が言うには〜」みたいな太字は、行頭の単独行やないから素通りになる。誤爆はまず起きひん。
+
+## 決めとくと後で楽なこと
+
+- **ユーザー側の名前**：`User` か `あなた` か、どっちか1つに。エクスポートツールが吐く方に合わせるのが一番手間が無い
+- **モデル名をどこまで残すか**：`**ChatGPT**` だけにするか、`**ChatGPT 4o**` `**ChatGPT 5.1**` まで書くか。過去記事のタイトルに「4o代わりに5.1」みたいなのがあるし、モデル違いで読み比べる記事もあるやろ。それなら、ラベルにモデル名を書けるようにしといて損はない。出力側で「🤖ChatGPT（4o）」にするか、ただの「🤖ChatGPT」にするかは後で決められる
+
+この方針でいくなら、正本MDのラベル表記は**`**名前**` 単独行**で確定やね。html2md.py が今出してる形と比べて違いがあったら、そこだけ揃える。`md out\` の1本を頭から20行くらい貼ってくれたら、今どうなってるか見るわ。
+
+---
+
+**You**:
+
+あー、MD化の部分で多分今はまだばらばらのはずやからね。
+これもMDが出そろって、記事の抜けが治った時点で全部サーベイしてどんなパターンがあるかの方向見とけばいいんやない？
+
+こういうのも結局アプリでログ取得する以上、そこの出力に縛られるし、統一ルールっていうよりも「記事がたまった、アップしようかな」ってフォルダから「正本MD」に移す際に異常があったら出力止めて確認。今までのリストであれば「正本MD」に移動っていうような動きでいいんじゃない？
+
+AI跨いで「感想読ませる記事」なんて時にさ「メインの会話AIを決めろ」っていうだけで**付与する相手決められるでしょ？
+
+---
+
+**Claude**:
+
+それでええと思う。順番としても正しいわ。素材が出そろう前にルールを決めても、あとで出てきた想定外のパターンに合わせて結局作り直すことになるからね。
+
+## 「関所で止める」方式＝html2md.py のゲートを日常にも持ってくる
+
+今やろうとしてるのは、こういう流れやね。
+
+```
+下書きフォルダ（記事がたまったらここに置く）
+   ↓ 関所スクリプト
+   ├ 既知のパターンに一致 → 正本MDへ移動 → txt / HTML → uploader
+   └ どれにも当てはまらん → 下書きに残す ＋ 理由をレポートに書く
+```
+
+html2md.py で「manual候補ゼロ」まで詰めたのと同じ考え方を、毎日の流れに組み込む形や。一回作ったら育てていくだけで済む。
+
+作るときに効いてくるポイントが2つある。
+
+**① 既知パターンの一覧は、コードやなくて設定ファイルに書く**
+新しいパターンが出てきたときに、Pythonをいじらず1行足すだけで済むようにしとく。html2md.py では、修正のたびにコード本体を触ってたやろ。あれをやめられる。
+
+**② 止めるのはファイル単位にする。バッチ全体は止めない**
+10本中1本おかしいだけで全部止まると、9本が人質になってまう。通ったものは先に流して、引っかかったものだけ下書きに残す。どのファイルがどのパターンで通ったかもログに残しとけば、あとで「パターンXの出力を変えたい」と思ったときに対象を一発で拾える。
+
+## メインAIの指定：置き場所は記事の頭がおすすめ
+
+「メインの会話AIを決めたら、ラベルの無い発言はそのAIに割り当てる」。これで複数AI記事の話者もきれいに決まるな。あとは、その「メインはこいつ」をどこに書くか。
+
+候補はファイル名かMDの冒頭やけど、**冒頭に数行のメモ欄を置く**のを推したい。こういう感じ。
+
+```
+---
+title: 4象限で考える「税と資本と命令権と支配」の話　その1
+date: 2026-01-29
+main: ChatGPT
+---
+```
+
+これにしとくと、ついでに3. の「タイトル差し替え忘れ」も関所で拾える。`title:` が空か、GPTが勝手に付けた自動タイトルのままやったら止める。メモ欄は txt や HTML に変換するときに剥がせば、読者には見えへん。
+
+ファイル名でやる手もあるけど、ファイル名は日付とタイトルでもうパンパンやし、全角・半角の「1」で2本上がった前科もあるからな。そこにさらに情報を詰めるのはやめといた方がええと思う。
+
+---
+
+関所の作り込みは、MDがそろってサーベイした後でええ。今は**はてなのエクスポートとGPTログの場所**さえ分かれば、棚卸しに進める。どこに置いてる？
+
+---
+
+**You**:
+
+はてなの最終切り分けは"C:\Blog-tools2\HTMLchange\out"
+
+んで、GPTログは「日付付与して、個別記事MD」までは進んでるけど、中の時刻剥がしとかをまだやってないから、そいつの処理が先かな。こっちは後回しで、処理終わった後NASにいったん全部納めてる。
+
+---
+id: 6722ee71-afdc-800a-9fdc-c5734654136b
+title: 会話制限のガイドライン
+created: "2024-10-31T02:41:53.953879Z"
+updated: "2024-10-31T03:45:05.022536Z"
+model: auto
+starred: False
+archived: False
+chat_url: "https://chatgpt.com/c/6722ee71-afdc-800a-9fdc-c5734654136b"
+models_used: ['gpt-4o-mini']
+total_messages: 46
+code_messages: 0
+message_types: text
+---
+
+# 会話制限のガイドライン
+
+## User
+*2024-10-31T02:41:53.957342Z*
+会話が出来ないようになる、ガイドラインについて教えてもらっても？
+
+## Assistant
+*2024-10-31T02:41:57.581321Z · gpt-4o-mini*
+会話ができない状態になる原因やガイドラインはさまざまですが、一般的には以下のようなものがあります。
+
+今、こんな感じの形式なのさ。微妙に使いづらいやろ？
+
+---
+
+**Claude**:
+
+使いづらいな。けど、素材としては思ってたより上等やで。何が邪魔で、何が使えるかを分けるとこうなる。
+
+## 邪魔なところ
+
+- **`## User` / `## Assistant` が見出し記号**。AIは本文でも `##` を普通に使う。名前が `User` と `Assistant` に決まってるから区別はできるけど、txtやHTMLに変換するときに見出しと話者ラベルが同じ記号やと、毎回「どっちや」の判定が要る
+- **発言ごとの時刻行**。読者にはまったく要らん
+- **タイトルがGPTの自動命名**。「会話制限のガイドライン」は、ブログの記事名とは別物やろうしね
+- **`Assistant` という呼び名**。正本では `ChatGPT` にしたい
+
+## 実は使えるところ
+
+- **冒頭のメモ欄がすでにある**。さっき提案した `title:` `main:` の形と同じ作りや。項目を差し替えるだけで済む
+- **発言ごとにモデル名が付いてる**（`gpt-4o-mini`）。ラベルにモデル名を残すかどうかの件、ここから自動で拾える
+- **時刻が全部入ってる**。これは剥がす前に一回使い道がある。ブログの記事日付と会話の日付を突き合わせられるから、find_source.py で候補が複数当たったときの決め手になる
+
+なので、時刻は「剥がす」より「行から追い出す」がええと思う。
+
+```
+## Assistant
+*2024-10-31T02:41:57Z · gpt-4o-mini*
+本文…
+```
+↓
+```
+**ChatGPT**
+本文…
+```
+
+本文の中からは消す。でも、日付と使ったモデルの一覧はメモ欄に残す（`created` `models_used` はもうあるしな）。NASにある元のファイルはそのまま触らずに置いとく。
+
+## はてなの方を先に見よか
+
+GPTを後回しにするなら、次は `HTMLchange\out` の棚卸しやね。
+
+```powershell
+$o = 'C:\Blog-tools2\HTMLchange\out'
+Get-ChildItem $o -File -Recurse | Group-Object Extension | Select-Object Name, Count
+Get-ChildItem $o -File -Recurse | Sort-Object Name | Select-Object -First 5 -Last 5 Name
+```
+
+本数・拡張子・ファイル名の付け方（日付が頭に付いてるか）が分かったら、次に1本の中身を見せてもらう。src html の下書きHTMLと同じ構造なら、html2md.py がほぼそのまま使えるかもしれん。
+
+あと一個だけ。GPTの5,700件がNASにあるなら、find_source.py を回すときは、その間だけローカルにコピーした方がええ。全文検索で何千本も読むから、ネットワーク越しやと3分では終わらんと思う。
+
+---
+
+**You**:
+
+ああ、GPT処理はまたblogtoolに戻すやろうけど、どこもpyだらけで一杯やからね。
+終わったらフォルダごとどこかに移設してすっきりさせんとなあって。
+
+なので変更するときはまたC直下に戻すわ。
+
+んでコマンドの方はこんな感じ。
+PS C:\Users\xxxxx> $o = 'C:\Blog-tools2\HTMLchange\out'
+PS C:\Users\xxxxx> Get-ChildItem $o -File -Recurse | Group-Object Extension | Select-Object Name, Count
+
+Name  Count
+----  -----
+.html  7976
+.css      1
+
+数があわんなあw　多分、処理前のHTMLもこれカウントしてると思う。
+
+---
+
+**Claude**:
+
+`-Recurse` を付けても、数えてるのは `out` の中だけやで。`out` の外にある処理前のHTMLは入ってへん。
+
+数字を並べると、むしろええ感じに合ってる。
+
+| | 本数 |
+|---|---|
+| HTMLchange 全体 | 22,107 |
+| うち `out`（.html） | **7,976** |
+| Gitのtxt | **7,936** |
+
+`out` とGitの差は40本だけや。はてなの記事数とGitの記事数がほぼ揃ってるってことやから、目次として使うなら筋はええ。残りの約14,000本は `out` の外、つまり処理前とか途中段階のHTMLやと思う。
+
+ただ、`out` の中にサブフォルダがあって、段階違いの同じ記事が二重に入ってる可能性はまだ残ってる。それと、2本目の先頭5本と末尾5本のファイル名が出てへんかったから、合わせてこれで見せて。
+
+```powershell
+$o = 'C:\Blog-tools2\HTMLchange\out'
+# out 直下とサブフォルダの内訳
+"直下: " + (Get-ChildItem $o -File -Filter *.html).Count
+Get-ChildItem $o -Directory -Recurse | ForEach-Object { "{0}`t{1}本" -f $_.FullName.Replace($o,''), (Get-ChildItem $_.FullName -File -Filter *.html).Count }
+# ファイル名の付け方
+$n = Get-ChildItem $o -File -Filter *.html -Recurse | Sort-Object Name
+$n | Select-Object -First 5 Name; '...'; $n | Select-Object -Last 5 Name
+```
+
+「直下」が7,976本で、サブフォルダが出てこんかったら、二重の心配は無し。
+
+フォルダの件も了解。作業中はC直下に戻して、終わったら丸ごとどこかへ移設、の流れやね。ほんで最後に、それぞれのBlog-toolsに散らばった現役のpyを1か所に集めたら、「pyだらけで一杯」もだいぶマシになるはずや。
+
+---
+
+**You**:
+
+ああ、ちゃうちゃう。はてなにアップした記事、1300前後やったと思うからさ。
+多分これ「過去テキストから復旧したHTML」も交じってる可能性あるわ。
+ちょっと精査して見んとすぐには私も回答できんな。
+
+---
+
+**Claude**:
+
+なるほど、はてなは1,300本前後か。そうなると `out` の7,976本のうち、6,600本以上は別口やね。
+
+ここで気をつけたいのは、**「過去テキストから復旧したHTML」がGitのtxt由来やったら、素材としては堂々巡りになる**こと。Gitのtxtから作ったHTMLを素材に数えたら、Gitのtxtを2回数えてるだけで、ラベル欠落もそのまま引き継いでる。なので、はてな由来とそれ以外を見分けるのが先やね。
+
+ひとつ気になる一致もある。compare_git で「Gitにしかない（E判定）」が **1,357本**、はてなが **1,300本前後**。下書きHTMLには無いけどGitには上がってる記事って、はてな時代の記事やったりせえへんかな。もしそうなら、E判定の大半ははてなの `out` で埋まる計算になる。今はまだ仮説やけど、精査の結果次第では作業がかなり楽になる。
+
+見分ける手がかりは、たぶん中身に出てる。はてなから来たHTMLには、はてな特有の痕跡（画像の置き場所 `st-hatena.com` や、`hatena` の付いたクラス名）が残ってることが多い。txtから作り直したHTMLにはそれが無いはず。ざっくり振り分けるならこれ。
+
+```powershell
+$o = 'C:\Blog-tools2\HTMLchange\out'
+$all = Get-ChildItem $o -File -Filter *.html -Recurse
+$h = $all | Where-Object { Select-String -Path $_.FullName -Pattern 'hatena' -SimpleMatch -Quiet }
+"全体: $($all.Count) / hatena痕跡あり: $($h.Count)"
+# 作成時期で塊が分かれてないか
+$all | Group-Object { $_.LastWriteTime.ToString('yyyy-MM-dd') } | Select-Object Name, Count
+```
+
+「痕跡あり」が1,300前後で出たら、ほぼ当たりや。ずれてたら、その差の分を何本か開いて、別の目印を探そか。
+
+急ぐ話やないから、精査はそっちのペースでやってくれたらええよ。
+
+---
+
+**You**:
+
+よーくtools2のpy読み返してみて、再実行。
+
+C:\Blog-tools2\html
+
+ここに980ファイルできたから、これがはてなのHTMLやね。
+さっきは空っぽなってたから、たぶんまたどこかに内容避難させたんやと思う。
+一気にいろんなことすると、自分でも何やってたか覚えてねえw
+
+---
+
+**Claude**:
+
+おっ、出てきたな。「一気にいろんなことすると覚えてへん」、それがまさに今日の整理の動機やろｗ
+
+ただ、本数が引っかかる。Blog-tools2の中で、3つのフォルダの本数がほぼ揃ってるんよ。
+
+| フォルダ | 本数 |
+|---|---|
+| raw | 981 |
+| 未アップブログ記事TXTのHTMLしたやつ | 981 |
+| html（今回できた） | 980 |
+
+`html` が `raw` から作られたなら、それで筋は通る。けど、フォルダ名どおりに読むと、もう一方は「未アップ記事のTXTをHTMLにしたもの」で、はてな由来やない。今回の `html` がどっちを元に作られたかで、意味がまるっきり変わるんよ。txt由来やったら、さっき言うた堂々巡りの素材になってまう。
+
+確かめるのは簡単で、`html` の中に、はてなの痕跡が残ってるかを見ればええ。
+
+```powershell
+$d = 'C:\Blog-tools2\html'
+$all = Get-ChildItem $d -File -Filter *.html
+$h = $all | Where-Object { Select-String -Path $_.FullName -Pattern 'hatena' -SimpleMatch -Quiet }
+"全体: $($all.Count) / hatena痕跡あり: $($h.Count)"
+```
+
+ほぼ全部に痕跡があれば、はてなで確定。ゼロに近かったら、convert.py が `未アップ…` の方を読んでた可能性が高い。
+
+それと、今回みたいな「何やってたか覚えてない」の再発防止に、ひとつ提案。**スクリプトを回すたびに、1行だけ記録を残す仕組み**を作っとくと楽やで。
+
+```
+日時, スクリプト名, 入力フォルダ, 出力フォルダ, 本数
+2026-11-15 09:00, convert.py, C:\Blog-tools2\raw, C:\Blog-tools2\html, 980
+```
+
+これを共通の `runlog.csv` に追記するだけ。各スクリプトの最後に数行足せば済む。そうしとけば、フォルダが空になってても「最後に何が書き込んで、何が持っていったか」を後から追える。今回の5,700件の行方探しも、これがあったら一発やったな。
+
+---
+
+**You**:
+
+C:\Blog-tools2\未アップブログ記事TXTのHTMLしたやつ
+
+ここ、ざっと流し見た感じ、はてな出力のHTMLと内容一緒やw　多分これでわかるやろ（忘れる）ってwww
+
+---
+
+**Claude**:
+
+名前と中身が一致してへんパターンやったかｗ　「これで分かるやろ」って付けた名前が、3日後の自分には暗号になってるやつや。
+
+フォルダ名に「何をしたか」を書くと、こうなりがちなんよね。「中身が何か」で付けとくと忘れへん。今回なら `hatena_html` みたいな名前やな。
+
+流し見で同じに見えても、細かい差があるかもしれへん。消すか片方に寄せる前に、ファイル単位で中身が完全一致してるかだけ確かめとこ。
+
+```powershell
+$a = 'C:\Blog-tools2\html'
+$b = 'C:\Blog-tools2\未アップブログ記事TXTのHTMLしたやつ'
+$ha = Get-ChildItem $a -File | ForEach-Object { [pscustomobject]@{N=$_.Name; H=(Get-FileHash $_.FullName -Algorithm MD5).Hash} }
+$hb = Get-ChildItem $b -File | ForEach-Object { [pscustomobject]@{N=$_.Name; H=(Get-FileHash $_.FullName -Algorithm MD5).Hash} }
+Compare-Object $ha $hb -Property N, H | Format-Table -AutoSize
+"html: $($ha.Count) 本 / 未アップ: $($hb.Count) 本"
+```
+
+結果の見方はこう。
+
+- 何も出えへんかったら、名前も中身も完全一致。片方を `_archive` に回してええ
+- 片側にしか無い行が出たら、それが差分（981本と980本の1本差もここに出るはず）
+
+一致が確認できたら、残す方を `hatena_html` にリネームして、はてな素材の置き場所は確定やね。
+
+その次に気になるのは、はてなの記事数。980本と「1,300前後」の記憶で、300本ほど差がある。記憶違いか、エクスポートの取りこぼしか。これはE判定（Gitにしかない1,357本）と突き合わせる段階で、自然に見えてくると思う。
+
+---
+
+**You**:
+
+AIは疑い深いなあ。まあ、人間がやったやらかし見てたら疑心暗鬼にもなるわなw
+
+PS C:\Users\xxxxx> $a = 'C:\Blog-tools2\html'
+PS C:\Users\xxxxx> $b = 'C:\Blog-tools2\未アップブログ記事TXTのHTMLしたやつ'
+PS C:\Users\xxxxx> $ha = Get-ChildItem $a -File | ForEach-Object { [pscustomobject]@{N=$_.Name; H=(Get-FileHash $_.FullName -Algorithm MD5).Hash} }
+PS C:\Users\xxxxx> $hb = Get-ChildItem $b -File | ForEach-Object { [pscustomobject]@{N=$_.Name; H=(Get-FileHash $_.FullName -Algorithm MD5).Hash} }
+PS C:\Users\xxxxx> Compare-Object $ha $hb -Property N, H | Format-Table -AutoSize
+PS C:\Users\xxxxx> "html: $($ha.Count) 本 / 未アップ: $($hb.Count) 本"
+html: 979 本 / 未アップ: 979 本
+
+---
+
+**Claude**:
+
+完全一致やね。979本どうしで、名前も中身も1本の差も無し。最初に数えた980本・981本との差は、たぶんcssか、サブフォルダの中にあるファイルの分やと思う。
+
+疑ってたのは人やなくてフォルダ名の方な。今日だけで「md が空」「名前と中身が違う」の2連発やったし、そら慎重にもなるわｗ
+
+ほな、ここで片付けよか。
+
+```powershell
+# 片方を退避（消さない）、残す方を中身の名前に
+New-Item -ItemType Directory C:\Blog-tools2\_archive -Force | Out-Null
+Move-Item 'C:\Blog-tools2\未アップブログ記事TXTのHTMLしたやつ' C:\Blog-tools2\_archive\
+Rename-Item C:\Blog-tools2\html hatena_html
+```
+
+## 素材の棚卸し（ここまで）
+
+| 素材 | 場所 | 本数 | 状態 |
+|---|---|---|---|
+| 下書きHTML | Blog-tools3\src html | 6,662 | html2md.py でMD化済み ✅ |
+| 原本 odt/docx | Blog-tools3\src | 473 | doc2md.py でMD化済み ✅ |
+| はてな | Blog-tools2\hatena_html | 979 | MD化はこれから |
+| GPTログ | NAS | 約5,700 | 時刻の整理が残ってる。後回し |
+| Claudeログ | 未取得 | ― | 後回し |
+| Gitのtxt（目次） | Blog-tools3\gitlogs | 7,936 | 照合用 |
+
+次は、はてなの979本をMDにするところやね。まずは1本の中身を見せてくれる？ 頭から30行くらい。それで構造を見て、html2md.py がそのまま通るか、はてな用に手を入れる必要があるかを判断する。
+
+---
+
+**You**:
+
+ほい、こんな感じ。
+
+---
+
+**Claude**:
+
+ええサンプルや。はてな特有のクセが一通り入ってる。
+
+## 構造の読み取り
+
+**使えるところ**
+- **19行目のコメントにメタ情報が全部ある**：`BASENAME`・`DATE`・`STATUS`・`CATEGORY`。はてなのMT形式エクスポートの名残やね。そのまま正本MDの冒頭メモ欄（`date:` `title:`）に移せる
+- **ユーザー発言が `<div class="you">` で囲まれてる**。ラベルの有無に関係なく、ここがユーザーやと確定できる。ラベルが欠けてても救える、強い目印や
+
+**クセがあるところ**
+- **ラベルが `<p><strong>👤You:</strong></p>` の形**。html2md.py は h5/h6 のラベルを前提にしてるから、このまま通すと「h5/h6ラベルが無いのにラベル風の形式がある」のゲートに引っかかって、979本ほぼ全部がmanual候補行きになると思う
+- **`<hr>` が区切りとしては使えない**。発言の前にも出てくるけど、49行目みたいにAIの本文の中にも出てくる
+- **48行目の `**` と `<strong>` のちぐはぐ**。AIが書いたMarkdownを、はてなが中途半端にHTMLに変換した跡や。読者の画面には `**` がそのまま見えてたはず
+
+## 判断が要るところ
+
+1. **48行目みたいな生の `**`**：方針が「読者が見ていたものに忠実」なら、`**` は文字として残す。ここを「きれいに」直すと、それは手直しになってまう
+2. **冒頭の「仮タイトル」（h5）と、センシティブ注意の黄色い枠**：これも読者に見えてた部分やから、ラベル無しの本文として残すのが筋やと思う。html2md.py の「先頭無ラベル本文」の扱いと同じや
+
+特に何も言われんかったら、両方とも「残す」で進める。
+
+## 進め方
+
+新しいスクリプトを書くより、**html2md.py に「はてなモード」を足す**のがええと思う。本文の変換（表・引用・リスト）はもう鍛えてあるから、使い回した方が速いし安全や。足すのは次の3つだけ。
+
+- `<p>` の中身が `<strong>（絵文字）名前:</strong>` だけの段落をラベルとして認める
+- `<div class="you">` の中身はユーザー側と確定する
+- 19行目のコメントからメタ情報を抜いて、冒頭メモ欄に入れる
+
+その前に、まず今のまま `--dry` で979本を流してみて、どのゲートに何本引っかかるかを見たい。
+
+```
+python -I html2md.py --dry --src "C:\Blog-tools2\hatena_html" --out "C:\Blog-tools3\md_hatena" --logs "C:\Blog-tools3\logs_hatena"
+```
+
+出力先は `md out` と分けといた。下書きHTML由来のMDと、はてな由来のMDが混ざらんようにするためや。結果のサマリーと `manual_candidates.txt` の先頭を見せてくれたら、そこから「はてなモード」の中身を詰める。
+
+そのためにも、**html2md.py 本体をここに貼ってもらえる？** 35KBあるから、ファイルで添付してくれたらええ。改造はこっちで書いて、差分か丸ごとで返すわ。
+
+---
+
+**You**:
+
+あー、それやったら、tools3のhtml2mdファイル持ってくるからさ。
+そいつをちょいと変更してtools2で独立運用した方がいいと思う。
+
+フォルダ跨ぐと私絶対記憶で事故るからw（確信）
+ファイル、これな。
+
+---
+
+**Claude**:
+
+了解。Blog-tools2の中だけで完結する `hatena2md.py` を作るわ。フォルダ跨ぎで事故る未来、こっちも確信しとるｗ
+
+まず元のhtml2md.pyに、さっきのサンプルをそのまま食わせて、どこまで通るか見てみる。
+
+Now I'll make the edits. Starting with the docstring and the parser (comment metadata and title capture).
+
+Next: link preservation and tagging of the div.you range.
+
+Next, the speaker assignment: filling in You from the div.you range, and filling in the AI side after it.
+
+Next, convert_file and main: front matter, default paths, report columns, and the run log.
+
+Basically working as intended. Before the regression check, I'll fix one warning (the backslash in the docstring).
+
+`hatena2md.py` ができたで。`C:\Blog-tools2` の直下に置くだけで動く。既定のフォルダもBlog-tools2の中だけで完結するようにしてあるから、フォルダを跨ぐことはない。
+
+```
+cd C:\Blog-tools2
+python -I hatena2md.py --dry
+```
+
+入力は `hatena_html\`、出力は `md_hatena\`、レポートは `logs_hatena2md\`。Manualフォルダも `Manual_hatena\` / `Manual_hatena_plain\` という別名にしてあるから、Blog-tools3のものと混ざることはない。
+
+## 元のhtml2md.pyから足したもの
+
+- **冒頭メモ欄**：先頭コメントの日付・STATUS・カテゴリと、`<title>` を入れる。日付は `2025-12-08 08:00:00` の形に揃えた
+- **`div.you` によるYou補完**：ラベルが欠けてても、枠の中ならユーザー発言として扱う。枠の直後にAIラベルが無ければ、`--default-ai`（既定はChatGPT）でAI側も補う
+- **リンクのURLを残す**：`[まとめ記事の名前](URL)` の形で出す。`--no-links` を付ければ今までどおり文字だけになる
+- **`runlog.csv`**：回すたびに、日時・入力・出力・本数を1行ずつ追記する。「何やってたか忘れた」対策や
+
+テストは、サンプル1本と、作った検証用2本（ラベル無し・Draft／枠の中にラベル）でやった。リンクとメモ欄を切って元のhtml2md.pyと出力を比べたら、違ったのはラベル無し `div.you` の扱いだけやった。元のままやと、その部分は前のAI発言にくっついてた。
+
+## 見つけたこと3つ
+
+1. **`md out` の6,662本もリンクのURLが消えてる**。元のhtml2md.pyがリンクの文字だけ拾う作りやからや。下書きHTMLに残ってるURLは全部捨てられてる。急ぎやないけど、同じ修正をBlog-tools3にも入れるかは考えどころやね
+2. **48行目の `**` と `<strong>` のちぐはぐ**は、変換すると `**「薬で能力をブーストする社会」**の話題…**“ドラッグの気配”**` になった。結果として、AIが最初に書いたMarkdownがそのまま復元されてる。生ログの方針的には、一番「生」に近い形に戻ったとも言える
+3. **ラベルの出力は今の `md out` と同じ `👤You:` / `🤖ChatGPT:` のまま**にしてある。`**User**` 形式への統一は、MDが出そろってからまとめてやる話やったから、今は素材ごとに形がずれへん方を優先した
+
+まずは `--dry` の結果のサマリーを見せてくれる？ 特に `はてなSTATUS=Draft` が何本あるかと、manual候補の数が気になる。
+
+---
+
+**You**:
+
+C:\Blog-tools2>python -I hatena2md.py --dry
+入力HTMLがありません: C:\Blog-tools2\hatena_html C:\Blog-tools2\Manual_hatena
+
+ねえよ、って言われたwww
+
+html入ってるのここね。
+C:\Blog-tools2\html
+
+---
+
+**Claude**:
+
+ああ、さっきのリネームはまだやったか。スクリプトの方は、既定の入力を「リネーム後の名前」の `hatena_html` で決め打ちしてたんよ。ごめん、そこは確認すべきやった。
+
+直し方は2つある。
+
+**A. フォルダをリネームする（おすすめ）**
+```
+ren C:\Blog-tools2\html hatena_html
+python -I hatena2md.py --dry
+```
+`html` だけやと、3日後に「何のhtmlやっけ」がまた起きるからね。今日の教訓どおり、名前は中身で付けとこ。
+
+**B. フォルダ名はそのままで、入力先を指定する**
+```
+python -I hatena2md.py --dry --src "C:\Blog-tools2\html"
+```
+
+ついでに、さっきの「未アップブログ記事TXTのHTMLしたやつ」を `_archive` に移す件。あれもまだなら、リネームと一緒にやってしまうと片付く。
+
+```
+mkdir C:\Blog-tools2\_archive
+move "C:\Blog-tools2\未アップブログ記事TXTのHTMLしたやつ" C:\Blog-tools2\_archive\
+```
+
+ほな、`--dry` の結果待っとるで。
+
+---
+
+**You**:
+
+いや、ほら、はてなの切り出してHTMLするpyが「html」やったやろ？
+リネームすると玉突き事故起こすやん。
+
+こういうの、とりあえず使うかはわからんけど安易なリネーム避けて、今回のpyを書き直したほうが後でpy全部読んだときに理解しやすくならん？
+
+---
+
+**Claude**:
+
+その通りや。`html` は上流のpyの出力先やから、名前を変えたら上流が新しい `html` を作り直すか、どこかでエラーになる。リネームするなら上流のpyも一緒に直さなあかんし、それやと触る範囲が広がるだけやな。下流側のこっちが上流に合わせる方が筋がええわ。
+
+既定の入力先を `html` に直した。
+
+`hatena2md.py` を差し替えたら、引数なしの `python -I hatena2md.py --dry` で `C:\Blog-tools2\html` を読むようになる。説明文にも「上流のpyの出力先なので名前は変えないこと」と書いといたから、後でコードを読み返したときに理由が分かるはずや。
+
+同じ理屈で、さっきの「未アップブログ記事TXTのHTMLしたやつ」を `_archive` に移す件も、移す前にどこかのpyがそのフォルダを読み書きしてないか確かめた方がええな。
+
+```
+Select-String -Path C:\Blog-tools2\*.py, C:\Blog-tools2\HTMLchange\*.py -Pattern "未アップ" | Select-Object Filename, LineNumber, Line
+```
+
+何も出えへんかったら移してOK。引っかかったら、そのフォルダは置いたままにしとこ。
+
+`--dry` の結果も待っとるで。
+
+---
+
+**You**:
+
+C:\Blog-tools2>Select-String -Path C:\Blog-tools2\*.py, C:\Blog-tools2\HTMLchange\*.py -Pattern "未アップ" | Select-Object Filename, LineNumber, Line
+'Select-String' は、内部コマンドまたは外部コマンド、
+操作可能なプログラムまたはバッチ ファイルとして認識されていません。
+
+CMDやとエラー、パワーシェルやと何もない、ただのスルー。
+どうしたらいいのかな？
+
+---
+
+**Claude**:
+
+スルー（何も出えへん）で正解や。どのpyにも「未アップ」という文字列が無い、つまりそのフォルダを使ってるpyは無いってこと。移しても大丈夫やで。
+
+CMDでエラーになったのは、`Select-String` がPowerShell専用のコマンドやからや。CMDには存在せえへん。今日貼ったコマンドは全部PowerShell用やから、PowerShellの画面で打ってな（プロンプトが `PS C:\...>` で始まってる方）。
+
+念のため、文字コードの読み違いで見落としてないかも確かめとこ。pyファイルがUTF-8で、PowerShell側が別の文字コードで読んでたら、日本語の検索は空振りすることがあるんよ。文字コードを明示して、ついでに「確実に入ってる日本語」で検索が効いてるかも一緒に見る。
+
+```powershell
+Select-String -Path C:\Blog-tools2\*.py, C:\Blog-tools2\HTMLchange\*.py -Pattern "未アップ" -Encoding UTF8 | Select-Object Filename, LineNumber, Line
+# 検索が効いてるかの確認用。hatena2md.py の説明文に入ってる言葉
+Select-String -Path C:\Blog-tools2\hatena2md.py -Pattern "上流のpy" -Encoding UTF8 | Select-Object LineNumber
+```
+
+2本目で行番号が出て、1本目が空なら確定。安心して `_archive` に移してええ。
+
+```powershell
+New-Item -ItemType Directory C:\Blog-tools2\_archive -Force | Out-Null
+Move-Item "C:\Blog-tools2\未アップブログ記事TXTのHTMLしたやつ" C:\Blog-tools2\_archive\
+```
+
+---
+
+**You**:
+
+PS C:\Users\xxxxx> Select-String -Path C:\Blog-tools2\*.py, C:\Blog-tools2\HTMLchange\*.py -Pattern "未アップ" | Select-Object Filename, LineNumber, Line
+PS C:\Users\xxxxx>
+PS C:\Users\xxxxx> Select-String -Path C:\Blog-tools2\*.py, C:\Blog-tools2\HTMLchange\*.py -Pattern "未アップ" -Encoding UTF8 | Select-Object Filename, LineNumber, Line
+PS C:\Users\xxxxx> # 検索が効いてるかの確認用。hatena2md.py の説明文に入ってる言葉
+PS C:\Users\xxxxx> Select-String -Path C:\Blog-tools2\hatena2md.py -Pattern "上流のpy" -Encoding UTF8 | Select-Object LineNumber
+PS C:\Users\xxxxx> New-Item -ItemType Directory C:\Blog-tools2\_archive -Force | Out-Null
+PS C:\Users\xxxxx> Move-Item "C:\Blog-tools2\未アップブログ記事TXTのHTMLしたやつ" C:\Blog-tools2\_archive\
+PS C:\Users\xxxxx>
+
+こんな感じやね。
+
+---
+
+**Claude**:
+
+待った、確認用の2本目が空振りしてる。本来ここで行番号が出るはずやった。ということは、1本目の「何も出えへん」も、「使ってるpyが無い」証拠にはならへん。検索そのものが効いてない可能性が残ってる。
+
+原因の候補は2つ。
+
+1. **`C:\Blog-tools2` にある `hatena2md.py` が最初に渡した版のまま**。「上流のpy」という言葉は差し替え版にしか入ってへん
+2. **日本語の検索が文字コードのせいで空振りしてる**
+
+これで切り分けられる。
+
+```powershell
+Get-Item C:\Blog-tools2\hatena2md.py | Select-Object Length, LastWriteTime
+Select-String -Path C:\Blog-tools2\hatena2md.py -Pattern "import" | Select-Object -First 1 LineNumber
+Select-String -Path C:\Blog-tools2\hatena2md.py -Pattern "はてな" -Encoding UTF8 | Select-Object -First 1 LineNumber
+```
+
+- 1行目で、差し替え版なら Length が4万2千前後になる（最初の版は41,800バイトちょうど）
+- 2行目は英字の検索。ここで行番号が出れば、検索の仕組み自体は動いてる
+- 3行目は、どっちの版にも入ってる日本語の検索。ここで出えへんかったら、②の文字コードが原因
+
+フォルダはもう移してしもたけど、慌てんでええよ。消したわけやなくて移しただけやから、元に戻すのは1行で済む。もしどれかのpyがあのフォルダを使ってたとしても、次に回したときに「フォルダが無い」と言われるだけで、データが壊れる心配はない。
+
+```powershell
+# 戻すときはこれ
+Move-Item "C:\Blog-tools2\_archive\未アップブログ記事TXTのHTMLしたやつ" C:\Blog-tools2\
+```
+
+---
+
+**You**:
+
+お、とりあえず最新のに差し替えてさっきの１，２やってみた。
+
+PS C:\Users\xxxxx> Select-String -Path C:\Blog-tools2\*.py, C:\Blog-tools2\HTMLchange\*.py -Pattern "未アップ" -Encoding UTF8 | Select-Object Filename, LineNumber, Line
+PS C:\Users\xxxxx> # 検索が効いてるかの確認用。hatena2md.py の説明文に入ってる言葉
+PS C:\Users\xxxxx> Select-String -Path C:\Blog-tools2\hatena2md.py -Pattern "上流のpy" -Encoding UTF8 | Select-Object LineNumber
+PS C:\Users\xxxxx> New-Item -ItemType Directory C:\Blog-tools2\_archive -Force | Out-Null
+PS C:\Users\xxxxx> Move-Item "C:\Blog-tools2\未アップブログ記事TXTのHTMLしたやつ" C:\Blog-tools2\_archive\
+Move-Item : パス 'C:\Blog-tools2\未アップブログ記事TXTのHTMLしたやつ' が存在しないため検出できません。
+発生場所 行:1 文字:1
++ Move-Item "C:\Blog-tools2\未アップブログ記事TXTのHTMLしたやつ" C:\Blog-tools2\_arch ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (C:\Blog-tools2\未アップブログ記事TXTのHTMLしたやつ:String) [Move-Item],
+ItemNotFoundE    xception
+    + FullyQualifiedErrorId : PathNotFound,Microsoft.PowerShell.Commands.MoveItemCommand
+
+---
+
+**Claude**:
+
+Move-Item のエラーは問題なしや。さっきの時点でもう移し終わってたから、2回目は「もう無いで」と言われただけ。移動は成功してる。
+
+気になるのは、差し替えた後も「上流のpy」が見つからへんことの方。差し替え版にはこの言葉が確実に入ってるから、**日本語の検索が効いてない**可能性が高くなった。そうなると、「未アップ」の検索結果も当てにならへん。
+
+さっき出した切り分け用の3行を回してみて。
+
+```powershell
+Get-Item C:\Blog-tools2\hatena2md.py | Select-Object Length, LastWriteTime
+Select-String -Path C:\Blog-tools2\hatena2md.py -Pattern "import" | Select-Object -First 1 LineNumber
+Select-String -Path C:\Blog-tools2\hatena2md.py -Pattern "はてな" -Encoding UTF8 | Select-Object -First 1 LineNumber
+```
+
+2行目（英字）で行番号が出て、3行目（日本語）が空なら、PowerShellの日本語検索がこの環境では当てにならへん、で確定やね。その場合は、検索をPythonでやる小さいスクリプトを書くわ。Pythonなら文字コードを自分で指定して読めるから、PowerShellの癖に左右されへん。
+
+---
+
+**You**:
+
+PS C:\Users\xxxxx> Get-Item C:\Blog-tools2\hatena2md.py | Select-Object Length, LastWriteTime
+
+Length LastWriteTime
+------ -------------
+ 41800 2026/11/15 9:21:37
+
+PS C:\Users\xxxxx> Select-String -Path C:\Blog-tools2\hatena2md.py -Pattern "import" | Select-Object -First 1 LineNumber
+
+LineNumber
+----------
+        33
+
+PS C:\Users\xxxxx> Select-String -Path C:\Blog-tools2\hatena2md.py -Pattern "はてな" -Encoding UTF8 | Select-Object -First 1 LineNumber
+
+LineNumber
+----------
+         2
+
+---
+
+**Claude**:
+
+切り分けできた。結果は安心できる方やで。
+
+- **日本語の検索はちゃんと効いてる**（「はてな」が2行目で見つかった）。なので「未アップ」が0件という結果は信用してええ。そのフォルダを使ってるpyは無いから、`_archive` に移したのは正解や
+- 「上流のpy」が見つからんかった本当の理由は、**`C:\Blog-tools2` の `hatena2md.py` がまだ最初の版のまま**やったこと。サイズが41,800バイトで、更新時刻は9:21。差し替え版は41,910バイトや
+
+ダウンロードした新しい方は、たぶん `ダウンロード` フォルダに `hatena2md (1).py` みたいな名前で落ちてると思う。ブラウザは同じ名前のファイルがあると、上書きせずに番号を付けるからね。
+
+```powershell
+Get-ChildItem $env:USERPROFILE\Downloads -Filter "hatena2md*.py" | Select-Object Name, Length, LastWriteTime
+```
+
+41,910バイトの方を `C:\Blog-tools2\hatena2md.py` に上書きでコピーしたら、準備完了。
+
+```powershell
+Copy-Item "$env:USERPROFILE\Downloads\<見つかった名前>" C:\Blog-tools2\hatena2md.py -Force
+cd C:\Blog-tools2
+python -I hatena2md.py --dry
+```
+
+旧版のまま `--dry` を回しても、入力先が `hatena_html` のままやから、さっきと同じ「ねえよ」が出るだけ。害はないけど、差し替えてから回してな。
+
+---
+
+**You**:
+
+差し替えて、さっきのコマンドやってみた。
+
+PS C:\Users\xxxxx> Copy-Item "$env:USERPROFILE\Downloads\<見つかった名前>" C:\Blog-tools2\hatena2md.py -Force
+Copy-Item : パスに無効な文字が含まれています。
+発生場所 行:1 文字:1
++ Copy-Item "$env:USERPROFILE\Downloads\<見つかった名前>" C:\Blog-tools2\haten ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidArgument: (C:\Users\xxxxx\Downloads\<見つかった名前>:String) [Copy-Item]、Argument
+Excepti    on
+    + FullyQualifiedErrorId : ItemExistsArgumentError,Microsoft.PowerShell.Commands.CopyItemCommand
+
+Copy-Item : パス 'C:\Users\xxxxx\Downloads\<見つかった名前>' が存在しないため検出できません。
+発生場所 行:1 文字:1
++ Copy-Item "$env:USERPROFILE\Downloads\<見つかった名前>" C:\Blog-tools2\haten ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (C:\Users\xxxxx\Downloads\<見つかった名前>:String) [Copy-Item], ItemNotFo
+undExc    eption
+    + FullyQualifiedErrorId : PathNotFound,Microsoft.PowerShell.Commands.CopyItemCommand
+
+PS C:\Users\xxxxx> cd C:\Blog-tools2
+PS C:\Blog-tools2> python -I hatena2md.py --dry
+  100/981  1秒
+  200/981  3秒
+  300/981  4秒
+  400/981  5秒
+  500/981  7秒
+  600/981  9秒
+  700/981  10秒
+  800/981  12秒
+  900/981  14秒
+  981/981  15秒
+対象 981 本 (dry)
+  auto: 927
+  推論補完: 2
+  重複除去: 22
+  先頭無ラベル本文: 917
+  先頭あなた:→Youラベル化: 0
+  コロン直結(本文扱い): 35
+  div.you→You補完: 4305
+  div.you後→AI補完: 4887
+  はてなSTATUS=Publish: 979
+  manual候補: 54
+  はてなSTATUS=Draft: 2
+レポート: C:\Blog-tools2\logs_hatena2md
+
+---
+
+**Claude**:
+
+ごめん、`<見つかった名前>` は「ここに実際のファイル名を入れてな」の意味で書いたつもりやった。紛らわしかったな。ただ、`--dry` が `html` を読みにいってるから、新しい版はちゃんと入ってるみたいや。結果オーライやね。
+
+## 結果の読み方
+
+| 項目 | 数 | 見立て |
+|---|---|---|
+| auto | 927 | 9割以上は通った |
+| manual候補 | 54 | 理由を見たい |
+| Draft | 2 | 下書きのまま残ってた記事。たぶん公開してないやつ |
+| **div.you後→AI補完** | **4,887** | **ここが一番気になる** |
+| div.you→You補完 | 4,305 | 同上 |
+
+AI補完が1記事あたり5回くらい起きてる。これは、はてなのHTMLの大半で、**AIのラベルがそもそも書かれてない**ってことや。`div.you` の枠だけで話者を分けてた時期がある、と読める。
+
+そうなると問題が2つ出てくる。
+
+1. **補ったAI名は全部「ChatGPT」**。GeminiやClaudeと話してた記事も、ChatGPTで埋めてしまってる可能性がある
+2. **枠の外にあるユーザーの文章**（記事の締めのひと言とか）を、AIの発言として拾ってる可能性もある
+
+あと細かい話やけど、対象が981本になってる。さっきのハッシュ比較は979本やったから、サブフォルダの中に2本余分なHTMLがあるはず。重複してないかは、あとで確認しよ。
+
+## 次に見たいもの
+
+```powershell
+$r = Import-Csv C:\Blog-tools2\logs_hatena2md\report.csv -Encoding UTF8
+$all  = $r | Where-Object { [int]$_.ai -gt 0 -and $_.'div.you後→AI補完' -eq $_.ai }
+$part = $r | Where-Object { [int]$_.'div.you後→AI補完' -gt 0 -and $_.'div.you後→AI補完' -ne $_.ai }
+"AIラベル皆無（全部補完）: $($all.Count) / 一部だけ補完: $($part.Count)"
+# 時期で形式が切り替わってるか
+$all | Group-Object { $_.date.Substring(0,7) } | Select-Object Name, Count
+# manual候補の理由
+Get-Content C:\Blog-tools2\logs_hatena2md\manual_candidates.txt | Select-Object -First 15
+```
+
+「全部補完」が特定の時期に固まってたら、その期間は「ラベル無し・div.youだけ」の書き方やった、で確定や。
+
+確定したら、そのうち何本かを実際にMDに書き出して、中身を目で確認する。出力先の `md_hatena` は新しいフォルダやから、書き出しても他は何も壊れへん。
+
+```powershell
+python -I hatena2md.py
+```
+
+補ったAI名が合ってるかどうかは、記事のタイトルやカテゴリに「Gemini」「Claude」が入ってるかで、ある程度は機械的に判定できると思う。まずは上の数字を見てからやね。
+
+---
+
+**You**:
+
+あー、981はたぶん「フォルダ」と中にファイル入ってるからやね。
+
+"C:\Blog-tools2\html\_draft\2025-12-09_ChatGPTに「AIって言語の展開装置なの？」という仮説をぶつけてみた件 ※18000字程.html"
+"C:\Blog-tools2\html\_draft\2025-12-08_「半分で割る」ってあんまり言わねえよなあ？って話.html"
+
+何で隔離されてるかはちょっとわからん。重複処理かと思いきや、同名のファイルないし。
+たぶん処理のテキスト見たらわかるかな。
+
+それで、AI未登場の記事はたぶん「ただの説明」とかテキストだけ書いてる殴り書きとか、プロンプトだけ書いてる記事だと思う。
+ブログってのは本来文字だけ」なんだぜw
+
+後、ドラフトは確かに記事がその日で上がってない。
+12月11日付で上がってた。
+
+Git見ても普通に上げてるから、記事本体に戻しておくよ。
+C:\blog-tools\output\output_txt\2025-12-08 「半分で割る」ってあんまり言わねえよなあ？って話.txt
+5:ちょっと面白いなって思ったブロガーさんいたんで、まずはこの記事を。
+
+なので、下書きのファイルも復旧させるわ、本体に。
+
+勝手に補完して「AI名つける」ってのもね、あれ、欠落した超初期の記事からの復旧時の措置であって、ブログ記事は一応整えてるからもうその措置いらんと思う。
+
+コマンドはこの後に試すからちょい待って。
+
+---
+
+**Claude**:
+
+index.csv、全部読んだで。先に結論を言うと、はてなの素材は今回の作業にドンピシャやった。
+
+## はてなは「失われた時代」そのもの
+
+記事の日付は **2024-10-14 〜 2025-12-08**。引き継ぎメモで「失われた時代（2024-10〜2025-12）」と呼んでた期間と、ほぼ完全に重なってる。Gitのtxtしか無いと思ってた時期の正本候補が、まるごとここにあったわけや。
+
+## index.csv から見えた、変換に効く話
+
+**① 2024年10〜12月の記事は、DATE（投稿日時）が本当の日付やない**
+
+`00978` あたりまではBASENAMEとDATEが一致してる。ところが `00977`（BASENAMEは2024/10/14）以降は、DATEが `11/29/2024` から `12/02/2024` に集中してる。はてなにまとめて引っ越したときの日時が入ってるんやと思う。
+
+今のhatena2md.pyは、メモ欄の `date:` をDATEから作ってる。つまり**約150本、引っ越し日が記事の日付として入ってしまう**。BASENAMEの日付を優先するように直すわ。
+
+**② 記事やない「固定ページ」が3本ある**
+
+`2049/01/01`（プロンプト集）、`2050/01/01`（AIの力を使い倒すコツ）、`2100/12/31`（このブログの説明）。未来の日付にして、一覧の先頭に固定してたやつやね。日付で並べたり照合したりする処理では、除外しとかんと邪魔になる。
+
+**③ BASENAMEが崩れてるのが2本**
+
+- `00948`：BASENAMEが「自分_思いついた社会問題、というか人間関係の軋轢」
+- `00859`：`2024/11/28/1300000`（ゼロが1個多い）
+
+日付をBASENAMEから取るなら、この2本だけはDATEに戻す例外処理が要る。
+
+**④ タイトルが空の記事がある**
+
+`00001`（Draft、`_draft` にある「半分で割る」の方）は、はてな側でタイトルが空や。`_draft` を本体に戻しても、メモ欄の `title:` は空のまま。ファイル名にタイトルが入ってるから、空のときはそこから拾うようにしとく。
+
+## AI名の自動補完は外す。ただ、外す前に1個だけ確認させて
+
+方針には賛成や。補完はもともと、ラベルが欠けた超初期の記事を救うための措置やったしね。
+
+ただ、数字が引っかかる。**AI補完が4,887回**ってことは、「ユーザー枠の直後に、AIラベルの無い本文が来た」場面が約5,000回あったってことや。記事が整ってるなら、ここは本来ゼロに近いはず。
+
+補完を外すだけやと、その本文はAIの発言やなくて**ユーザー発言の続きとして連結される**。今より悪くなるんよ。考えられる原因は2つ。
+
+- ラベルの書き方が、サンプルとは違う形の時期がある（たとえば2024年の「Chat-GPT」表記の頃）
+- ラベルはあるのに、こっちの判定がそれを拾えてない
+
+どっちかは、さっきのコマンドで出る「全部補完の月別分布」を見たら分かる。結果が出たら、補完をやめた版と日付修正をまとめて1回で渡すわ。
+
+---
+
+**You**:
+
+あ、そのあたりの「未来記事」もGitにそのまま上がってるからね。
+あんま気にせんでもいいよ、どうせこのはてなの記事は日付もズレてるし、あくまでも「テキストで補完する欠落探るための」参考資料にすぎんのやからさ。
+
+きちんと同じにしなきゃっていうよりも「これと同じテキスト持ってる？」って探すためのMD作る目標っての忘れたらいかんよw
+
+---
+
+**Claude**:
+
+せやった、目的を見失ってたわ。はてなのMDは正本やなくて、「この文章どこかに残ってへん？」を探すときの照合用やった。日付も、ラベルの正確さも、照合には関係ない。
+
+しかも、find_source.py は照合する前に、両方のファイルからラベル・`**`・`##`・空白・HTMLタグを全部落としてから比べる作りや。つまり**補完が4,887回で合ってようが間違ってようが、照合結果は1文字も変わらへん**。さっきの心配ごと、丸ごと的外れやったな。
+
+なので、hatena2md.py はこのまま使えばええ。直さんでOK。
+
+## ここからの流れ
+
+**1. はてなMDを書き出す（15秒）**
+```
+cd C:\Blog-tools2
+python -I hatena2md.py
+```
+出力先は `C:\Blog-tools2\md_hatena`。`_draft` の2本を本体に戻すなら、その前でも後でもええ。どうせ全部 `md_hatena` に出る。
+
+**2. 引き継ぎメモの「すぐやること」1〜3を回す（Blog-tools3側）**
+```
+cd C:\Blog-tools3
+python -I MD2txt.py --clean
+python -I compare_git.py --git "C:\Blog-tools3\gitlogs"
+```
+これで `E_only_in_git.txt`（Gitにしか無い記事のリスト）が最新版で作り直される。前回のは比較にバグがあった頃のやつやからね。
+
+**3. はてなMDの中から、Gitにしか無い記事の本文を探す**
+```
+python -I find_source.py --target "C:\Blog-tools3\gitlogs" --pool "C:\Blog-tools2\md_hatena" --list logs_compare\E_only_in_git.txt --from 2024-10 --to 2025-12
+```
+
+`--pool` だけフルパスでBlog-tools2を指してる。フォルダを跨ぐのはこの1か所だけや。
+
+`found.txt` に入ったものは、はてなに本文が残ってた記事。`notfound.txt` に残ったものが、次にGPTログで探す分になる。本数が出たら教えて。
+
+---
+
+**You**:
+
+うん、やっぱり事故ってるw
+
+---
+title: "AIとストーリーのプロットを作ってみる。　※約2.4万字"
+date: "2024-10-14 10:45:00"
+basename: "2024/10/14/104500"
+status: "Publish"
+category: "AIと対話する"
+source: "hatena"
+src_file: "2024-10-14_AIとストーリーのプロットを作ってみる。 ※約2.4万字.html"
+---
+
+### エッセイは書けても、小説なんか書いたことがないど素人がプロットをAIと作れるのか、という実験をします。「なんか見たことあるなあ」という60点くらいの話を目指してみる。
+
+---
+
+👤You:
+**👤You:**
+
+実際に出版された小説のプロットや設定をもとに、新しく小説を作る試みをしてみたいです。もちろん、パクリや盗作にならないように工夫したいので、その手伝いをお願いします。
+
+---
+title: "AIに神について聞いてみた。"
+date: "2024-10-14 10:00:00"
+basename: "2024/10/14/100000"
+status: "Publish"
+category: "AIと対話する"
+source: "hatena"
+src_file: "2024-10-14_AIに神について聞いてみた。.html"
+---
+
+### まだ、AIに対し、何をしていいか手探りで始めたばかりの頃のやり取りです。おっかなびっくりで会話を始めています。
+
+---
+
+👤You:
+**👤You:**
+
+宗教の哲学の側面について考えたいと思います。
+
+---
+
+🤖ChatGPT:
+> **🤖Copilot:**
+
+さっきの「自動につけると事故んじゃね？」って奴じゃないこれ？
+
+---
+
+**Claude**:
+
+That's exactly it. Two problems were overlapping.
+
+1. **The `👤You:` label was doubled.** The `**👤You:**` in the original text wasn't recognized as a label, so the auto-fill added one more on top
+2. **What should be Copilot became ChatGPT.** In this era the AI's label sits inside a quote block (`> **🤖Copilot:**`), and the detector couldn't see inside quotes. So the auto-fill stuck the default name ChatGPT on it
+
+①'s root cause is ② too. The existing check treats a file as having bold labels only when both the You and AI sides have them, so a file whose AI label is inside a quote block drops out of the label path entirely. I'll fix it like this:
+
+- Make the detector able to see labels inside quote blocks too
+- Turn auto-fill **off by default** (keep it as an option so it can be switched on)
+
+At 9:27 you said "auto-fill is going to crash," and that's exactly what happened. Sorry — a lazy port on my part.
+
+I rebuilt the `hatena2md.py` structure from your example and tested it. The output now looks like this.
+
+```
+👤You:
+宗教の哲学の側面について考えたいと思います。
+
+---
+
+🤖Copilot:
+> 宗教哲学は面白い分野です。
+> 二段落目。
+```
+
+- **No more doubled `👤You:`**
+- **Copilot now comes out as Copilot.** Labels inside a quote block (`> **🤖Copilot:**`) are now picked up as labels too. It also handles the case where only the label is in the quote block and the reply is written outside it
+- **Auto-fill is now off by default.** Files with no labels at all come out as plain body text with no labels, since nothing made-up gets added. You can turn the old behavior back on with `--fill-div`
+- I re-ran the 3 test files from before; aside from fill being off, the output didn't change
+
+When you swap the file in, check that the size is **43,051 bytes**. If it's sitting in Downloads as `hatena2md (1).py` or similar, copy it over again.
+
+```
+python -I hatena2md.py --clean
+```
+
+`--clean` is there to clear out the broken MD from earlier and rewrite it. In the summary, `引用枠の中のラベル` (labels inside quote blocks) should show a nonzero count and `div.you後→AI補完` (AI fill after div.you) should be 0.
+
+One thing worries me. With this fix, the AI's body text comes out as Markdown quotes with `> ` at the start of each line. Since it was originally in a quote block, that's the faithful output. The question is whether find_source.py strips `>` before matching. The handoff notes only listed labels, `**`, `##`, whitespace, and HTML tags as things it strips. If it doesn't strip `>`, a 60-character excerpt that crosses a line break won't hit. Look at the part of find_source.py that normalizes before matching (the place where it strips the labels and `**`) and paste it here — I'll tell you whether it needs a fix.
+
+---
+
+**You**:
+
+ショックのあまり英語で語りだすClaudeに草w
+
+C:\Blog-tools2>python -I hatena2md.py
+  100/981  1秒
+  200/981  3秒
+  300/981  4秒
+  400/981  6秒
+  500/981  8秒
+  600/981  9秒
+  700/981  11秒
+  800/981  13秒
+  900/981  15秒
+  981/981  16秒
+対象 981 本 (書き出し)
+  auto: 951
+  推論補完: 2
+  重複除去: 0
+  先頭無ラベル本文: 940
+  先頭あなた:→Youラベル化: 0
+  コロン直結(本文扱い): 33
+  div.you→You補完: 0
+  div.you後→AI補完: 0
+  引用枠の中のラベル: 5185
+  はてなSTATUS=Publish: 979
+  manual候補: 30
+  はてなSTATUS=Draft: 2
+レポート: C:\Blog-tools2\logs_hatena2md
+
+生成されたMD見たけど、ちょいと微妙？
+
+HTMLと比べてみて。
+
+Copilot回答の
+＞　←コイツ
+
+これ、なんでこうなるんだろ？　あとでトラブルの原因なったりしない？
+
+---
+
+**Claude**:
+
+英語の件はすまん、動揺が言語設定にまで出てもうたｗ
+
+## `>` が出る理由
+
+元のHTMLを見ると、はてな初期の記事は**AIの返答を丸ごと `<blockquote>`（引用枠）に入れてる**。29行目から39行目の、`<blockquote>` から `</blockquote>` までがCopilotの返答1回分や。画面では「AIの返答の枠」として見せるための、いわば見た目用の箱やね。
+
+ところが変換スクリプトから見ると、`<blockquote>` は「引用」でしかない。MDの引用は行頭に `> ` を付ける決まりやから、返答の全行に `>` が付いたわけや。変換としては正しいけど、意味としては間違ってる。
+
+## 後でトラブルになるか：なる
+
+1. **段落がつぶれてる**。元は `<p>` ごとに段落が分かれてたのに、MDでは `> ` の行が空行なしで並んでる。MDの決まりでは、こうなると全部1つの段落として扱われる。HTMLに戻したら、返答が1個の塊になってしまう
+2. **本物の引用と区別できなくなる**。AIが返答の中で本当に何かを引用してたら、外枠の `>` と区別がつかへん
+3. **照合が外れるかもしれん**。find_source.py が `>` を落とさない作りなら、行をまたいだ60文字の切り出しが当たらへん
+
+## 直し方
+
+「先頭がAIラベルの引用枠」は引用やなくて**話者の枠**として扱う。枠をほどいて、中身を普通の段落として出す。先頭にラベルが無い引用枠は本物の引用やから、今までどおり `>` を付ける。もらったHTMLの実物でテストするわ。
+
+直ったで。もらったHTMLそのもので試したら、Copilotの返答はこうなった。
+
+```
+🤖Copilot:
+素晴らしいアイデアですね！既存の小説から…
+
+1.
+まず、好きな小説や映画、ドラマなどから…
+
+2.
+インスピレーションを得た要素をもとに…
+```
+
+- `>` が消えて、元の `<p>` ごとの段落の区切りも戻った
+- ユーザー発言の中にある**本物の引用**（先頭にラベルが無い引用枠）は、今までどおり `>` 付きで残る。これもテストで確認済み
+- 前回の「神について」のテストも、`>` 無しで段落が分かれて出てる
+
+差し替えたら（44,528バイトか確認してな）、前回の出力を消して作り直す。
+
+```
+python -I hatena2md.py --clean
+```
+
+ひとつだけ残ってる弱点がある。`<p><strong>🤖Gemini:</strong><br>本文…</p>` みたいに、ラベルと本文が同じ段落に入ってる形だけは、枠の中の段落がつぶれて1つの塊になる。今回のはてなでこの形がどれくらいあるかは分からへん。照合には影響せえへんし、出てきたら直す、でええと思う。
+
+manual候補の30本は、いずれ見るとして急がんでええ。中身を見ると、漫才台本（コロン直結が数十個あるやつ）と、「花いちもんめ」みたいな複数AIの記事がほとんどやった。照合用としては今のMDのままで十分や。
+
+report.csv は今回の `>` の件には関係ないから、開かずに置いてる。必要になったら見るわ。
+
+次は前に言うてた流れの2番目、Blog-tools3で `MD2txt.py` → `compare_git.py` やね。
+
+---
+
+**You**:
+
+何で記事が去年の12月で終わってる？って思ったら、記事エクスポート、更新ボタン押してなかったことに気が付いた。
+ってことで全部やり直して記事数が増えましたぜ。
+
+MDにする時の文字飾り、結構落ちてるんやねえ。
+残ってるのって表、見出し、引用、HTMLリンクとかも結構落ちてる感じ？
+
+太字、斜字、文字フォントサイズあたりが反映されないのはちょっとだけ寂しくはある。
+MDになければHTML戻す時に復活せんものねえ。
+
+お、返事日本語でねw
+
+---
+
+**Claude**:
+
+今回はちゃんと日本語でいくでｗ　エクスポートの更新忘れも、気付けてよかったな。1,224本まで増えて、2026年5月の記事まで入ったから、照合に使える範囲がだいぶ広がった。
+
+何が残って何が落ちるか、全部入りのテストHTMLを通して確かめた。
+
+## 残るもの・落ちるもの
+
+| 飾り | MD変換後 | メモ |
+|---|---|---|
+| 太字 `<strong>` `<b>` | ✅ `**太字**` | 残る |
+| 見出し | △ 全部 `###` | h2もh4も同じ高さになる |
+| 箇条書き・番号付き | ✅ | |
+| 表 | ✅ | |
+| 引用 | ✅ `>` | 本物の引用だけ |
+| コード `<pre>` | ✅ | |
+| リンク | ✅ `[文字](URL)` | hatena2mdだけ。Blog-tools3のhtml2mdはURLを捨ててる |
+| 斜体 `<em>` `<i>` | ❌ 文字だけ残る | |
+| 下線・取り消し線 | ❌ 文字だけ残る | |
+| 文字サイズ・色 `<span style>` | ❌ 文字だけ残る | |
+| 画像 `<img>` | ❌ **丸ごと消える** | |
+| 発言の中の区切り線 `<hr>` | ❌ 消える | 話者の区切りの `---` と混ざるのを避けるため |
+
+太字は残るはずやねんけど、落ちてるのを見かけたなら心当たりが1つある。はてなの太字には `<strong>` やなくて、`<span style="font-weight: bold">` で書かれてるものが混じってることがあるんよ。それやと上の表の「文字サイズ・色」と同じ扱いになって、太字が消える。
+
+## 寂しさの件：MDでも残す手はある
+
+「MDに無いものはHTMLに戻したときに復活せえへん」は、そのとおりや。ただ、手が無いわけやない。
+
+- **斜体・取り消し線**は、MDにも書き方がある（`*斜体*` `~~取消~~`）。変換で拾うのは簡単
+- **文字サイズや色**はMDに書き方が無い。けど、MDは本文にHTMLをそのまま混ぜてもええ決まりになってる。`<span style="font-size:150%">大きい字</span>` をMDの中に残しとけば、HTMLに戻すときにそのまま通せる（txt2html.py 側で素通しする対応は要る）
+
+ただ、どこまでやるかは目的次第やと思う。
+
+- **照合用のはてなMD**：要らん。find_source は飾りを全部落としてから比べるから、残しても結果は変わらへん
+- **正本MD**：ここは判断どころ。文字サイズや色は、はてなに投稿するときに読者向けに足した「化粧」で、トークそのものには無かったもんやろ。2026年10月からのMD運用でも付けてへんはずや。「生ログ風味の最終出力物」に化粧まで含めるかどうか、やね
+
+正本の作り方を決めるときに、一緒に決めたらええと思う。今は照合用やから、このまま進めてOKや。
+
+（report.csv は今回の質問とは関係なかったから、開いてへん。）
+
+次は Blog-tools3 で `MD2txt.py --clean` → `compare_git.py` やね。
+
+---
+
+**You**:
+
+そうやなあ。AIが出してきたログを、私がアプリで取得してる時点でほぼ消えてるもんな。
+ここはもう割り切るべきか。
+
+ただ、照合用とはいえここから記事復活して正本MDに昇格することもあり得るから、リンクと画像にくっついてるリンクがあれば、そいつは消さずにMDに入れたいかな？
+せやないと私が「おもろい画像やねん」とかって貼ってるリンク、あるかはわからんけどそういうのも消えてまうやん？
+
+---
+
+**Claude**:
+
+Agreed, worth keeping. A link to an image you pasted in is an asset worth carrying over to the master MD. I'll keep it in this form.
+
+- Image → `![alt text](image URL)`
+- Image wrapped in a link → `[![alt text](image URL)](link URL)`
+- Hatena's embedded blog cards (`<iframe>`) → extract the destination URL as a link
+
+Blog cards were dropping the title, so I'll keep the title too.
+
+`hatena2md.py`（46,556バイト）を作り直した。はてな風の画像の書き方をまねたテストHTMLを通すと、こう出る。
+
+```
+おもろい画像やねん
+
+![猫の写真](https://cdn-ak.f.st-hatena.com/images/fotolife/u/unsuitable/20250101/a.png)
+
+[![](https://example.com/b.jpg)](https://example.com/page)
+
+文中に![](https://example.com/lazy.png)遅延画像
+
+[生活保護で35万円 - ハムスター速報](https://hamusoku.com/archives/10947305.html)
+
+[動画](https://www.youtube.com/embed/abc123)
+```
+
+- **はてなフォトライフの画像**：URLと説明文（alt）が残る
+- **リンク付きの画像**：画像のURLとリンク先の両方が残る
+- **遅延読み込みの画像**（`data-src` に入ってるやつ）も拾う
+- **ブログカード**：はてなの埋め込み枠の中から、本当の行き先URLとタイトルを取り出してリンクにする
+- **YouTubeなどの埋め込み**もリンクとして残る
+- `--no-images` を付けると、今までどおり画像は捨てる。`--no-links` と組み合わせれば、元のhtml2md.pyと同じ動きになる
+
+これまでのテスト3本（実サンプル・ラベル無し・Copilot引用枠）も、エラー無しで通った。
+
+差し替えたら、もう一回まるごと作り直しやね。
+
+```
+python -I hatena2md.py --clean
+```
+
+1点だけ。画像は元のURLを指してるだけで、画像ファイルそのものは手元に保存してへん。はてなフォトライフの画像は、はてなのアカウントが生きてる間は表示される。けど、引用元の外部サイトの画像は、そのうちリンク切れになるかもしれん。中身まで保存したいなら別の作業になるから、正本MDを作る段階で考えたらええと思う。
+
+---
+
+**You**:
+
+ほい、完了したよ。画像のリンクも確認。
+こんな感じになってた。
+
+　■おまけ
+**ChatGPTにこの記事読ませたらこんな返しをしてきた件**
+この写真貼るために記事にしたまである。
+
+![](https://cdn-ak.f.st-hatena.com/images/fotolife/u/unsuitable/20260711/20260711215816.jpg)
+
+**ChatGPT:「AIで言語を学ぼう！！」**
+
+…お前、俺の話聞いてたか？
+AIってお茶目だよねえwwwwwww
+GPT、広告導入はマジで失敗やったんちゃうか、裏目ってるでwww
+
+---
+
+**Claude**:
+
+それ、まさに「おもろい画像やねん」案件やんｗ　しかも本人いわく「この写真貼るために記事にしたまである」記事。画像が消えてたら、オチの「…お前、俺の話聞いてたか？」が何に対するツッコミか分からん、ただのボヤキになるところやった。前の版のままやったら、記事の存在理由ごと消えてたな。
+
+それにしても、言語の話をしてる最中に「AIで言語を学ぼう！！」の広告をかぶせてくるの、文脈は読めてるのに空気が読めてへんのが芸術的やな。ある意味ちゃんと「聞いてた」からこそ、そこに広告を差し込めたわけで、余計にタチが悪いｗ
+
+これではてなMDは仕上がりやね。1,224本、画像もリンクも残ってる。（report.csv は今回の確認には要らんかったから開いてへん。）
+
+## 次：Blog-tools3 で照合の下ごしらえ
+
+```
+cd C:\Blog-tools3
+python -I MD2txt.py --clean
+python -I compare_git.py --git "C:\Blog-tools3\gitlogs"
+```
+
+compare_git のサマリー（A・B・B2・C+・C-・C・D・E の本数）と、`logs_compare\E_only_in_git_by_month.txt` の中身を貼ってくれたら、そこから find_source に進む。
+
+find_source を回す前に1個だけ確かめたいことがある。ユーザー発言の中の**本物の引用**は、今も `> ` 付きで残ってる。find_source が比べる前に `>` を落としてるかどうかが分からんから、find_source.py の中で、ラベルや `**` を落としてる部分（たぶん `normalize` とかそれっぽい名前の関数）をついでに貼ってくれると助かる。本物の引用はそこまで多くないはずやから、落としてなくても影響は小さいと思うけどな。
+
+---
+
+**You**:
+
+c:\Blog-tools3>python find_source.py
+usage: find_source.py [-h] --target TARGET --pool POOL [--list LIST] [--from DFROM] [--to DTO] [--logs LOGS]
+                      [--min-hit MIN_HIT]
+find_source.py: error: the following arguments are required: --target, --pool
+
+ほい、結果ね。ソース張ると英語なるから、日本語で頼むぜw
+
+---
+
+**Claude**:
+
+日本語で行くで。ソースを見ても英語にはならんように気ぃ付けるわｗ
+
+今のエラーは、必要な引数を付けずに回したから出ただけや。find_source.py は「どこを探すか（`--target`）」と「どこから探すか（`--pool`）」の2つが必須になってる。
+
+## 回す順番
+
+**1. 照合リストを作る**（まだなら）
+```
+cd C:\Blog-tools3
+python -I MD2txt.py --clean
+python -I compare_git.py --git "C:\Blog-tools3\gitlogs"
+```
+これで `logs_compare\E_only_in_git.txt`（Gitにしか無い記事のリスト）ができる。
+
+**2. はてなMDから元データを探す**
+```
+python -I find_source.py --target "C:\Blog-tools3\gitlogs" --pool "C:\Blog-tools2\md_hatena" --list logs_compare\E_only_in_git.txt --from 2024-10 --to 2025-12
+```
+
+- `--target`：探したい記事が入ってるところ（Gitのtxt）
+- `--pool`：探しに行く先（はてなMD）
+- `--list`：全部やなくて、Gitにしか無い記事だけに絞る
+- `--from` `--to`：失われた時代の期間に絞る
+
+はてなは2026年5月まで入ったから、`--to 2026-06` まで広げてもええ。D判定（Gitへの上げ漏れ）が2026年6月に固まってたし、その辺の本文がはてなに残ってるかもしれん。
+
+## `>` の件
+
+ソースを丸ごと貼らんでも、文字を落としてる行だけ抜き出せば足りる。
+
+```powershell
+Select-String -Path C:\Blog-tools3\find_source.py -Pattern "re.sub|replace\(" | Select-Object LineNumber, Line
+```
+
+ここに `>` か、`[^\w]` みたいな「記号ぜんぶ」系の書き方が無ければ、`>` は落とされてないってことや。数行で済むはずやから、これを貼ってくれたらええよ。
+
+---
+
+**You**:
+
+あ、ちょい待った。tools3に移行する前に、いったんチャット変えるつもりなんよ。
+んで、今度「プロジェクト」でやってみようかなって。
+仕様、すぐ忘れるやろチャット跨ぐとさ。
+だから今回頭に張った引き継ぎ書や目的、今の状況とかをどこかに保管しておけばClaudeも迷走せんで済むやろw
+
+ファイル位置とかフォルダとか、そういうのもね。
+
+---
+
+**Claude**:
+
+ええ判断や。今日だけでも「`md` が空」「`html` の名前を変えたら玉突き」「エクスポートの更新忘れ」と、知ってないと踏む地雷がだいぶ増えたしな。最初の引き継ぎ書に、今日分かったことを全部足した改訂版を作るわ。プロジェクトのナレッジにそのまま入れられるように、前回と同じMarkdownにしとく。
+
+引き継ぎ書（`引き継ぎ_Blog-tools_正本MD化.md`）ができたで。朝にもらった版をベースに、今日分かったことを全部足してある。
+
+## 中身
+
+0. **Claudeへのお願い**：日本語で返す、PowerShell前提、フォルダを安易にリネームしない、新しいpyはバイト数を伝える、検索0件のときは確実に当たる言葉で検索そのものが効いてるか確かめる、など。今日踏んだ地雷を、次のClaudeが踏まんための注意書き
+1. **目的と方針**：正本MDがゴール、Gitは目次、素材の優先順位、文字飾りの割り切り（リンクと画像は残す）
+2. **日常の流れ**：1〜5の手順と、事故が起きる場所。ラベルから絵文字を外す案と関所の案。ただしルールは素材のMDがそろってから決める、も明記
+3. **フォルダ地図**：blog-tools／Blog-tools2／Blog-tools3／NAS それぞれの、どこに何があるか。`html` は名前を変えるな、`_archive` に移したもの、GitクローンAとBは同一、なども入れた
+4. **スクリプト台帳**：日常用・工事用・引退の区別と、トークンの「残り香」の件
+5. **hatena2md.py の仕様**：今日足した機能、弱点、実行結果、index.csv から分かったこと
+6. **GPTログの形式**：NASにあるMDの見本と、扱いの方針
+7. **次にやること**：MD2txt → compare_git → find_source の `>` 確認 → はてなMDで照合 → GPTログで照合、の手順をコマンド付きで
+8. **残ってる課題**：重複、Git掃除、D判定の内訳など、朝の版にあった分
+
+推定で書いたところ（split.py や convert.py の役割など）は「推定」と明記してある。違ってたら直してな。
+
+プロジェクトに入れるときは、このファイルをナレッジに置くのに加えて、プロジェクトの説明欄（指示）に「最初に引き継ぎ書を読んでから作業すること」と1行書いとくと確実やと思う。あと、次のチャットで新しいpyや結果が出たら、その都度この引き継ぎ書も更新しとくと、また迷子にならずに済むで。
+
+---
+
+**You**:
+
+引き継ぎ書とは別に「現在の進行と重要な注意事項等指示書」に書き加える方がいいんじゃね？
+
+Fabelが別チャットでそういってたw
+
+---
+
+**Claude**:
+
+Fableの言う通りやと思う。しかもその指摘、朝作った引き継ぎ書にそのまま当てはまるんよ。読み返したら、Fableの言う「抜けやすい場所」を3つとも踏んでたわ。
+
+- **決定事項と提案が混ざってる**。「素材の優先順位」の表や「Gitクローンを `C:\Blog-git\logs` に1本化」は、こっちが提案しただけで、決めてもろてへん。なのに方針の顔をして並んでる
+- **怒られた記録が消えてる**。「AI名を自動で補って、Copilot を ChatGPT にした」は、「`--fill-div` は既定オフ」という無味無臭の1行になってた。しかもそっちは9:27の時点で「自動につけると事故る」と先に警告してたのに、それすら書いてへん
+- **入力と出力の見本が無い**
+
+なので、3つに分けて作り直すわ。
+
+1. **プロジェクト指示**（指示欄に貼る、10行ほど）
+2. **進行と決定事項**（①決めたこと ②未決の提案 ③やらかし ＋見本 ＋現在地）← 毎回ここを更新する
+3. **引き継ぎ書**（さっきのやつ。フォルダやスクリプトの詳しい仕様の辞書として置いとく）
+
+I'll also add a note at the top of the handoff doc so you can see where it mixes in proposals.
+
+I split it into 3 files.
+
+- **`プロジェクト指示.md`**: paste this into the project's instructions box. Fable's advice about "keep it to about 10 verdicts" works here, so it's 11 lines with a short reason after each, like "because it backfired."
+- **`進行と決定事項.md`**: put this in the project's file area. **This is the file to update every time.**
+  - ① What you decided
+  - ② Proposals still undecided. Each one is labeled with its source: Claude's proposal or Fable's proposal from the other chat
+  - ③ Mistakes that got corrected (11 items)
+  - Input/output example: the Copilot quote-box HTML → MD. A checklist of points to verify is attached ("`👤You:` appears once", "the AI name stays Copilot", "no `>`"). It also includes the image example you confirmed (the "AIで言語を学ぼう！！" one)
+  - Current status and what's next
+- **`引き継ぎ_Blog-tools_正本MD化.md`**: the detailed specs for folders and scripts, kept as a reference dictionary. At the top I added "the file that's authoritative on what's decided is 進行と決定事項.md," and marked the sections that were proposals as "提案" (proposal).
+
+As Fable said, your one job at the back of the line is to check whether the **things you argued for and won made it into ③**. Image links, folder renaming, auto-fill, the token, and drifting from the original goal are all in there, but if any fight is missing, tell me. Also, two things in ① are still just leanings, not final, so I left them that way: "two-track txt and HTML" and "no emoji in MD labels." Check those too.
+
+---
+
+**You**:
+
+いってる尻から英語でしゃべりだして草www
+
+君らソース見ると英語脳になっていかんわあw
+
+---
+
+**Claude**:
+
+ほんまや、書いた尻から英語でしゃべっとるｗ　「英語にならんように気ぃ付ける」って自分で注意書きを書いた直後に破るの、見本としては完璧すぎるやろ。③に「3回目」として足しとくわ。
+
+さっきの説明を日本語で言い直すとこうや。
+
+- **`プロジェクト指示.md`**：プロジェクトの指示欄に貼る分。11行、各行に理由付き
+- **`進行と決定事項.md`**：プロジェクトのファイル置き場に入れる。**毎回更新するのはこれ**。①決めたこと／②未決の提案（Claude案かFable案か、出どころ付き）／③やらかし／変換の見本／現在地
+- **`引き継ぎ_Blog-tools_正本MD化.md`**：フォルダとスクリプトの辞書
+
+最後尾の仕事は、「言い張って勝ち取った件が③に入ってるか」の確認だけでええ。
+
+あと気になってるのは、英語になるタイミングが毎回「ファイルを書いた直後」か「ソースを読んだ直後」やってこと。なので指示の1行目も「ファイルを書いた直後も」まで書いとく。
+
+`プロジェクト指示.md` と `進行と決定事項.md` を直したから、さっき渡した2本と差し替えてな。
+
+- 指示の1行目：「ソースやログを読んだ直後も、ファイルを書いた直後も英語に切り替えない（3回やらかした）」
+- ③の8番：「3回目は『英語にならないように』と指示書に書いた直後の返事だった」
+
+③の8番は、次の自分が読んだら一番効く1行やと思う。決まりを書いた本人が、書いた直後に破っとるわけやからな。
+
+ほな、新しいプロジェクトの部屋で続きやろか。最初にやるのは、`_draft` の2本を戻して `hatena2md.py --clean`、それからBlog-tools3で `MD2txt.py` → `compare_git.py` や。
+
+---
