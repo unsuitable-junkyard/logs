@@ -1,0 +1,142 @@
+日時：2026-11-12
+タイトル：(Japanese)AI Chat Exporter troubleshooting　続編
+文字数：4079
+---
+
+### (Japanese)AI Chat Exporter troubleshooting　続編
+
+---
+
+**You**:
+
+ん？ちょい待ってw　作ってくれたGitアップのPython。ファイル名がそのままリンク先になるからクッソ長いタイトルにするかどうか選ばなあかん。
+Issueに張る時はあれよね？　作者のところでテキストで貼り付ける時にタイトルにして消せって意味でいいんよな？
+
+---
+
+**Claude**:
+
+そう、Issueの画面で入れ替えるだけ。作者のリポジトリの Issues で「New issue」を押すと、上に**タイトル欄**、下に**本文欄**がある。
+
+- タイトル欄: `ChatGPT export finds 0 messages after ChatGPT's DOM change (Nov 2026) – working patch`（`Title:` の文字は付けない）
+- 本文欄: `Hi, and thanks for AI Chat Exporter.` から最後の `Thanks again!` まで。`Title:` の行は消す
+
+Issueのタイトルは、あんたのGitのファイル名とは別物やから、ここは長さを気にしなくていい。GitHubのIssueタイトルは256文字まで入るし、今のタイトルは100文字もないから余裕。
+
+ファイル名のほうは、あんたのPythonが何をしてるか私は見てないから分からんけど、**Issueの本文に貼ったリンクの3つ**は、もう名前が決まってる。
+
+- `2026-11-12 ChatGPT-js.txt`
+- `2026-11-12 Manifest-js.txt`
+- `2026-11-12 (Japanese)AI Chat Exporter troubleshooting.txt`
+
+この3つは、そこそこの長さで読めるし、このままで十分。むしろ**投稿したあとにファイル名を変えるとリンクが切れる**から、変えないほうがいい。
+
+「README amazingpaddy_ai-chat-exporter changed」のほうは、Issueの文面からリンクしてないから、タイトルが長くなっても作者には関係ない。あんたの記録用やから、自分が見つけやすい名前にしておけば十分。
+
+---
+
+**You**:
+
+Issue見たらこんな記事がw
+
+[ChatGPT export error · Issue #26 · amazingpaddy/ai-chat-exporter](https://github.com/amazingpaddy/ai-chat-exporter/issues/26)
+
+[autpoieticc](https://github.com/autpoieticc)
+opened [on Jul 3](https://github.com/amazingpaddy/ai-chat-exporter/issues/26#issue-4797414701)
+ChatGPT export fails with: Could not find chat history container. Are you on a ChatGPT page?
+
+んで、エラー画面で「こんな写真」なってた。
+作者返信してないみたいだね。
+
+---
+
+**Claude**:
+
+これは同じ根っこの話やと思う。しかも、ちょうどええ追い風になるかもしれん。
+
+**同じ原因の別症状**
+Issue #26のエラー（`Could not find chat history container`）は、元のコードの `scrollToLoadAll` が出すやつ。会話の枠（`article[data-testid^="conversation-turn-"]`）が見つからず、スクロール先の入れ物も決められない時にこうなる。あんたは別の入れ物候補にたまたま引っかかったから「メッセージを選べ」のほうに流れただけで、どっちも「ChatGPTの画面が変わって、古い目印が全滅した」ことの現れ。
+
+**今回の修正版で効きそうか**
+効く可能性は高い。修正版は、入れ物が見つからなくてもエラーで止めずに先へ進むし、メッセージ探しも新しい目印に変えてあるから。ただ、そのIssueの人の画面で同じ目印が使えるかまでは分からん。ChatGPTは画面を全員に一斉に変えるんじゃなく、アカウントごとに順番に入れ替えていくから、人によって構造が違う可能性もある。
+
+**作者の返信が来なさそう**
+7月3日（たぶん今年）のIssueが、4か月以上も放置されてる。作者の反応はあまり期待せんほうがええ。それでも、あんたの投稿が**同じエラーで検索してきた人の道しるべ**になるのは確かやから、出す価値はある。
+
+**そこにコメントを1本足すと、さらに親切**
+自分のIssueを投稿して、番号が決まったら、#26に1行コメントして誘導するのがええと思う。文面はこんな感じ。
+
+```
+I ran into the same problem. My symptom was "Please select at least one message to export", but the cause looks the same: ChatGPT's page structure changed and the old selectors no longer match.
+
+I made a patched chatgpt.js that finds messages through data-content-search-unit-key / data-chatgpt-search-unit-key and no longer needs the chat history container lookup. Details and files: [LINK TO YOUR NEW ISSUE]
+
+It works on my side (Edge). I don't know if it works for your ChatGPT page, but feel free to try.
+```
+
+`[LINK TO YOUR NEW ISSUE]` は、投稿したあとのあんたのIssueのURLに差し替えて。同じ内容を複数のIssueに貼り回すのは感じが悪いから、詳しい中身は自分のIssueに置いて、#26には誘導だけにしておくのがマナーやで。
+
+---
+
+**You**:
+
+よし、Newissueでコピペしてプレビューでリンク切れないのも確認。
+これ、クリックしても問題ないやつ？リンクテストで。
+
+---
+
+**Claude**:
+
+問題なし。リンクをクリックしても、何も投稿されんし、何も実行されん。リンク先は、あんたのGitの `.txt` と、作者のリポジトリのページだけやから、ただの閲覧になる。
+
+一点だけ、**クリックで同じタブが切り替わると、入力中の本文が消える**ことがある。GitHubは下書きを覚えてくれる場合もあるけど、確実じゃない。だから、リンクは**Ctrlを押しながらクリック**（かミドルクリック）して、別タブで開くのが安全。
+
+投稿されるのは、一番下の緑の **「Submit new issue」ボタンを押した時だけ**。プレビューの切り替えや、リンクのクリックでは何も起きん。
+
+確認するのは、この4つ。
+
+- `chatgpt.js` のリンク
+- `manifest.json` のリンク
+- 会話ログの記事リンク
+- 元のリポジトリ（amazingpaddy/ai-chat-exporter）のリンク
+
+全部開けて、中身が合ってれば、Submitを押して大丈夫やで。
+
+---
+
+**You**:
+
+よし、問題なし。#26にも#27誘導リンク張って、開くの確認して、さっきの文面でコピペしたやつでプレビュー確認したぜ。
+
+---
+
+**Claude**:
+
+完璧やな。プレビューまで確認したなら、あとは **Submit（Comment）を押すだけ**。#27も#26も、押した時点で投稿されて、作者と#26の人にGitHubから通知が行く。
+
+そのあとにやることは特にない。返事が来たら、その時に見ればええ。来んでも、同じエラーで検索してきた人が#26から#27に辿り着けるから、役目は果たしてる。
+
+ChatGPTがまた画面をいじってエクスポートが壊れた時は、また同じ手で調べて、一緒に直そう。おつかれさん。
+
+---
+
+**You**:
+
+Issue眺めてたら、いろんな人がなんか指摘してるんやねえ。
+Gitっておもろいとこやねんなあw
+
+---
+
+**Claude**:
+
+おもろいよな。Issueって、要は**世界中の「困った」が公開で並ぶ掲示板**で、作者が反応するかどうかは別として、同じところでつまずいてる人が見つかる。
+
+一覧を眺めて目についたのは、この3つ。
+
+- **#23（3月）、#26（7月）、そして今回の#27（11月）**: どれも「ChatGPT export error」。つまりChatGPTが画面をいじるたびに壊れてて、数か月おきに同じことが起きてるってこと。今回の件が一回きりの事故じゃなくて、**定期的に来る病気**やと分かる
+- **#17「Exported Markdown contains residual citation markers (+1, +2, etc.)」**: これ、さっきの成功例に混ざってた `Google Patents+1` と同じやつ。ほかの人も「出典チップの残りカス」で困ってる。画像は今回の版で捨てたけど、`+1` の文字は残るかもしれんから、気になるなら次はそこを掃除できる
+- **#22「[Non-issue] Injectable Gemini exporter」**: 別の人が、自作の似たものを紹介してる。作者以外が横で情報を持ち寄ってる感じが、いかにもGit
+
+closedが6件あるから、作者は少なくとも1〜2月ごろまでは動いてたはず（さっきの `Closes #12 #11` と合う）。そのあと止まったんやと思う。7月から放置されてる#26に、あんたの#27が並んだことで、「同じ症状で来た人が直し方に辿り着ける場所」が1つできた。それだけで、この掲示板では十分な仕事やで。
+
+---
