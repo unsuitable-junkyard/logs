@@ -1,0 +1,181 @@
+日時：2026-11-14
+タイトル：PowerShellで特定フォルダのファイル日時を巻き戻すコマンド
+文字数：3954
+---
+
+### PowerShellで特定フォルダのファイル日時を巻き戻すコマンド
+
+　文字数：2000
+
+**You**:
+
+powershellまたはCMDで、特定フォルダに入ったファイルの「日時だけ」を更新、作成の日付だけを巻き戻す簡単なコマンド書いてもらえる？
+
+毎回書いては無くしてるので、今回ちょっとメモ帳に残しておこうと思ってw
+
+---
+
+**Claude**:
+
+PowerShellなら一発で書ける。CMDは日付だけいじるのがキツいので、PowerShell推奨。
+
+**作成日時だけ巻き戻す（フォルダ内の全ファイル）**
+
+```powershell
+Get-ChildItem "C:\target\folder" -File | ForEach-Object { $_.CreationTime = "2026-01-01 00:00:00" }
+```
+
+**作成・更新・アクセスを全部まとめて揃える版**
+
+```powershell
+Get-ChildItem "C:\target\folder" -File | ForEach-Object {
+    $_.CreationTime   = "2026-01-01 00:00:00"
+    $_.LastWriteTime  = "2026-01-01 00:00:00"
+    $_.LastAccessTime = "2026-01-01 00:00:00"
+}
+```
+
+**メモ帳に残すときの小ネタ**
+
+- サブフォルダも含めたいなら `Get-ChildItem` に `-Recurse` を足す
+- フォルダ自体の日付もいじるなら `-File` を外す
+- 「今から○日前」にしたいなら、日付部分を `(Get-Date).AddDays(-30)` に差し替えるだけ
+
+```powershell
+Get-ChildItem "C:\target\folder" -File | ForEach-Object { $_.CreationTime = (Get-Date).AddDays(-30) }
+```
+
+CMD単体だと、日付だけ変えるコマンドが標準では無い（`copy /b`でタッチするくらいで、しかも更新日時が今になる）ので、CMDから使いたいなら `powershell -Command "..."` で包むのが現実的。
+
+```cmd
+powershell -Command "Get-ChildItem 'C:\target\folder' -File | ForEach-Object { $_.CreationTime = '2026-01-01 00:00:00' }"
+```
+
+毎回なくす問題は、これを `.ps1` で保存してデスクトップに置いとけば、メモ帳すら要らなくなるぞw
+
+---
+
+**You**:
+
+時間は据え置き、3種類の日時、日付だけ指定日にするには？
+要するにだな、3日前の記事を経ダウンロードしたときに便宜上3日前にしたいけど時間の指定まではしたくないズボラなわたし用さw
+
+---
+
+**Claude**:
+
+時刻部分は各ファイルの元の値をそのまま使って、日付だけ差し替える形にすればいける。
+
+**日付を直接指定する版**
+
+```powershell
+$d = Get-Date "2026-11-11"
+Get-ChildItem "C:\target\folder" -File | ForEach-Object {
+    $_.CreationTime   = $d.Date + $_.CreationTime.TimeOfDay
+    $_.LastWriteTime  = $d.Date + $_.LastWriteTime.TimeOfDay
+    $_.LastAccessTime = $d.Date + $_.LastAccessTime.TimeOfDay
+}
+```
+
+**「3日前」にしたいズボラ版**
+
+1行目だけ差し替える。
+
+```powershell
+$d = (Get-Date).AddDays(-3)
+Get-ChildItem "C:\target\folder" -File | ForEach-Object {
+    $_.CreationTime   = $d.Date + $_.CreationTime.TimeOfDay
+    $_.LastWriteTime  = $d.Date + $_.LastWriteTime.TimeOfDay
+    $_.LastAccessTime = $d.Date + $_.LastAccessTime.TimeOfDay
+}
+```
+
+**ポイント**
+
+- `$d.Date` は時刻を切り捨てた日付だけの値で、`.TimeOfDay` は各ファイルの現在の時刻部分。足し算で「指定日＋元の時刻」になる
+- 再ダウンロードしたファイルなら時刻は今日の時刻のままなので、「3日前のその時間にDLした」風の自然な見た目になる
+- サブフォルダも含めるなら `Get-ChildItem` に `-Recurse` を足す
+
+メモ帳に貼るなら、2つ目の「3日前版」を丸ごと保存しとけば、数字を変えるだけで使い回せるぞw
+
+---
+
+**You**:
+
+ん？　なんかうまく動かねえぞ？　どこからコピペするのこれ。
+
+こんな感じ。
+Windows PowerShell 5.1
+Copyright (C) Microsoft Corporation.All rights reserved.
+
+PS C:\Users\xxxxx> ```powershell
+`powershell : 用語 '`powershell' は、コマンドレット、関数、スクリプト ファイル、または操作可能なプログラムの名前として
+認識されません。名前が正しく記述されていることを確認し、パスが含まれている場合はそのパスが正しいことを確認してから、再
+試行してください。
+発生場所 行:1 文字:1
++ ```powershell
++ ~~~~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (`powershell:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+
+PS C:\Users\xxxxx> $d = (Get-Date).AddDays(-1)
+PS C:\Users\xxxxx> Get-ChildItem "C:\Users\xxxxx\Downloads\11-13" -File | ForEach-Object {
+>>     $_.CreationTime   = $d.Date + $_.CreationTime.TimeOfDay
+>>     $_.LastWriteTime  = $d.Date + $_.LastWriteTime.TimeOfDay
+>>     $_.LastAccessTime = $d.Date + $_.LastAccessTime.TimeOfDay
+
+---
+
+**Claude**:
+
+原因は2つ。
+
+**1. 先頭の ` ```powershell ` を一緒にコピペしてる**
+あれは表示用の囲み記号で、コマンドじゃない。コピーするのは中身の `$d = ...` から `}` までだけ。最初のエラーはこれ。
+
+**2. 最後の `}` が入ってない**
+今の画面、`>>` が出て入力待ちのままになってるはず。波括弧が閉じてないから、PowerShellが「まだ続きがあるのかな」って待ってる状態。
+
+**今の待ち状態を抜ける**
+`Ctrl + C` を押す。`PS C:\Users\xxxxx>` に戻る。
+
+**そのまま貼れる版（1日前、11-13フォルダ用）**
+一番楽なのは1行版。改行問題が起きない。
+
+```
+$d = (Get-Date).AddDays(-1); Get-ChildItem "C:\Users\xxxxx\Downloads\11-13" -File | ForEach-Object { $_.CreationTime = $d.Date + $_.CreationTime.TimeOfDay; $_.LastWriteTime = $d.Date + $_.LastWriteTime.TimeOfDay; $_.LastAccessTime = $d.Date + $_.LastAccessTime.TimeOfDay }
+```
+
+これを丸ごとコピーして、PowerShellに貼って Enter。エラーが出なければ成功（何も表示されないのが正常）。
+
+**確認コマンド**
+```
+Get-ChildItem "C:\Users\xxxxx\Downloads\11-13" -File | Select Name, CreationTime, LastWriteTime
+```
+
+メモ帳に残すなら、この1行版が一番事故らないぞw 日数だけ `-1` の数字を変えれば使い回せる。
+
+---
+
+**You**:
+
+細かいけど、そういうの解らんのよなあ。
+ここまでやって「記事になる」　無知を晒すのは気にすんなwww
+
+---
+
+**Claude**:
+
+気にしてないぞw むしろこの手の「分からん人がハマる地点」って、分かってる人は記憶から消えてるから、生ログで残ると地味に価値が出るやつ。
+
+ちなみに今回の最初のエラー、PowerShellは律儀に「`powershell なんてコマンドは知らん」と真面目に返してきてて、ちょっと健気。人間でいうと、他人の名刺の「肩書き」欄まで読み上げて挨拶したようなもん。
+
+**コピペのコツ（これだけ覚えれば事故らない）**
+
+- コードの囲み（黒い枠）の右上にコピーボタンがある。それを押せば中身だけ入るので、` ``` ` は混ざらない
+- 枠の外の日本語まで選択して貼ると、PowerShellが日本語を命令だと思って怒る
+- 貼ったあと何も反応せず `>>` が出たら、括弧が閉じてない合図。`Ctrl + C` で脱出
+
+つまり「枠の中だけ、ボタンで」。これがメモ帳に書くべき本体かもなw コマンドより、この一行のほうが毎回なくす人には効く。
+
+---
